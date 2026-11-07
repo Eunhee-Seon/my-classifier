@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>건의사항 분류기</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="brandbar">
+    <div class="wrap brandbar-inner">
+      <a class="company-logo" href="./" aria-label="EDATA9 SPORTS">
+        <img src="assets/edata9-sports-logo.png" alt="EDATA9 SPORTS" width="2172" height="724">
+      </a>
+    </div>
+  </div>
+  <header class="masthead">
+    <div class="wrap masthead-inner">
+      <a class="wordmark" href="./">
+        <span class="wordmark-mark" aria-hidden="true"></span>
+        <span class="wordmark-en">VOICE DESK</span>
+        <span class="wordmark-ko">익명 건의사항 분류기</span>
+      </a>
+      <nav class="tabs" role="tablist" aria-label="화면 선택">
+        <button role="tab" id="tab-classify" aria-controls="panel-classify" aria-selected="true">분류</button>
+        <button role="tab" id="tab-score" aria-controls="panel-score" aria-selected="false" tabindex="-1">채점</button>
+      </nav>
+    </div>
+  </header>
+  <div class="practice-bar" role="note">
+    <div class="wrap">
+      <span class="practice-tag">연습용</span>
+      <span>가상 데이터로 연습하는 분류기이며, 입력한 의견은 실제로 접수되지 않습니다.</span>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div id="load-error" class="notice notice-error" hidden></div>
+
+    <!-- 분류 -->
+    <section id="panel-classify" role="tabpanel" aria-labelledby="tab-classify" class="panel">
+      <div class="page-head">
+        <h1>모든 의견에는 방향이 있습니다.</h1>
+        <p class="page-sub">당신의 의견을 알맞은 담당 분야로 연결합니다.</p>
+      </div>
+
+      <div class="board">
+        <!-- 01 입력 -->
+        <div class="col">
+          <div class="col-head">
+            <span class="no">01</span>
+            <label for="input" class="col-title">입력</label>
+            <span class="col-meta">Ctrl + Enter</span>
+          </div>
+          <div class="composer">
+            <textarea id="input" rows="6" placeholder="예) 회의실 에어컨이 고장나서 너무 더워요. 수리 부탁드립니다."></textarea>
+            <div class="composer-bar">
+              <div class="shield">
+                <svg class="shield-icon" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                  <path d="M10 2 3.5 4.5v5c0 4 2.8 7.2 6.5 8.5 3.7-1.3 6.5-4.5 6.5-8.5v-5L10 2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                  <path d="m7 10 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <p class="shield-text">이름·전화번호·사번·이메일은 분류 전에 자동으로 가립니다</p>
+              </div>
+              <button id="classify-btn" class="btn-primary">분류하기</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 02 판정 -->
+        <div class="col">
+          <div class="col-head">
+            <span class="no">02</span>
+            <span class="col-title">판정</span>
+            <span class="col-meta" id="verdict-meta">Gemini 판정 · 실패 시 규칙</span>
+          </div>
+          <div id="result" class="verdict-panel" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <details class="disclosure">
+        <summary>분류 칸 5개 기준</summary>
+        <ol id="cat-list" class="cat-list"></ol>
+      </details>
+    </section>
+
+    <!-- 채점 -->
+    <section id="panel-score" role="tabpanel" aria-labelledby="tab-score" class="panel" hidden>
+      <div class="page-head page-head-row">
+        <div>
+          <p class="kicker"><span>BASELINE</span>규칙 분류기 채점</p>
+          <h1>기준선 기록</h1>
+          <p class="page-sub">정답 데이터 30문장으로 규칙 분류기와 Gemini를 같은 조건에서 채점합니다.</p>
+        </div>
+        <div class="head-actions">
+          <button id="score-btn" class="btn-secondary">규칙으로 채점</button>
+          <button id="ai-score-btn" class="btn-primary">AI로 채점</button>
+        </div>
+      </div>
+      <div id="score" class="score" hidden aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">EDATA9 SPORTS · VOICE DESK · 입력한 의견은 저장하지 않습니다</footer>
+
+  <script src="mask.js"></script>
+  <script src="rules.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
