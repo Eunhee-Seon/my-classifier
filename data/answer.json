@@ -108,9 +108,8 @@
     "id": "test_016",
     "text": "다른 팀에 업무 요청할 때 공식 채널이 없어서 개인 DM으로 부탁하게 됨. 요청 채널 좀 만들어주세요",
     "category": "조직문화·협업",
-    "urgency": "낮음",
-    "label_by": "human",
-    "note": "판단이 갈린다"
+    "urgency": "보통",
+    "label_by": "human"
   },
   {
     "id": "test_017",
@@ -130,9 +129,8 @@
     "id": "test_019",
     "text": "인사를 해도 안 받아주시는 분이 있는데 저만 그런가 싶어서요. 크게 문제 될건 없는데 좀 신경쓰이네여",
     "category": "개인 고충·갈등",
-    "urgency": "보통",
-    "label_by": "human",
-    "note": "판단이 갈린다"
+    "urgency": "낮음",
+    "label_by": "human"
   },
   {
     "id": "test_020",
@@ -201,9 +199,8 @@
     "id": "test_029",
     "text": "lee.test@edata9.com 이분이 공개 채널이랑 메일에 계속 저를 비꼬는 말을 쓰고 팀 전체를 참조로 걸어요",
     "category": "개인 고충·갈등",
-    "urgency": "보통",
-    "label_by": "human",
-    "note": "판단이 갈린다"
+    "urgency": "높음",
+    "label_by": "human"
   },
   {
     "id": "test_030",
