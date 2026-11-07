@@ -24,7 +24,8 @@
         <span class="wordmark-ko">익명 건의사항 분류기</span>
       </a>
       <nav class="tabs" role="tablist" aria-label="화면 선택">
-        <button role="tab" id="tab-classify" aria-controls="panel-classify" aria-selected="true">분류</button>
+        <button role="tab" id="tab-classify" aria-controls="panel-classify" aria-selected="true">직원</button>
+        <button role="tab" id="tab-hr" aria-controls="panel-hr" aria-selected="false" tabindex="-1">HR 검토</button>
         <button role="tab" id="tab-score" aria-controls="panel-score" aria-selected="false" tabindex="-1">채점</button>
       </nav>
     </div>
@@ -88,8 +89,8 @@
         <div class="col">
           <div class="col-head">
             <span class="no">02</span>
-            <span class="col-title">판정</span>
-            <span class="col-meta" id="verdict-meta">Gemini 판정 · 실패 시 규칙</span>
+            <span class="col-title">분석 결과 안내</span>
+            <span class="col-meta" id="verdict-meta"></span>
           </div>
           <div id="result" class="verdict-panel" aria-live="polite"></div>
         </div>
@@ -99,6 +100,29 @@
         <summary>분류 칸 5개 기준</summary>
         <ol id="cat-list" class="cat-list"></ol>
       </details>
+    </section>
+
+    <!-- HR 검토 (시뮬레이션) -->
+    <section id="panel-hr" role="tabpanel" aria-labelledby="tab-hr" class="panel" hidden>
+      <div class="page-head">
+        <p class="kicker"><span>SIMULATION</span>HR 담당자 검토 화면</p>
+        <h1>접수된 의견 검토</h1>
+        <p class="page-sub">AI 추천을 참고해 분류를 확정하고, 담당 부서와 후속 조치를 정합니다.</p>
+      </div>
+      <div class="sim-banner" role="note">
+        <strong>실습용 시뮬레이션입니다.</strong>
+        <span>로그인·권한 통제가 없는 연습 화면이며, 실제 HR 담당자에게 아무것도 전달되지 않습니다. 이번에 직원 화면에서 제출한 가상 의견만 이 브라우저 메모리에 있고, 새로 고치면 사라집니다.</span>
+      </div>
+      <div class="board hr-board">
+        <div class="col">
+          <div class="col-head"><span class="no">01</span><span class="col-title">접수 목록</span><span class="col-meta" id="hr-count"></span></div>
+          <ol id="hr-list" class="hr-list"></ol>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="no">02</span><span class="col-title">사건 검토</span><span class="col-meta" id="hr-meta"></span></div>
+          <div id="hr-detail" class="verdict-panel"></div>
+        </div>
+      </div>
     </section>
 
     <!-- 채점 -->

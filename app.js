@@ -117,107 +117,70 @@
       .join("");
   }
 
-  function urgencyScale(levels, value) {
-    return `
-      <div class="scale" role="img" aria-label="긴급도 ${escapeHTML(value || NO_RESULT)}">
-        ${levels
-          .map((u) => `<span class="seg ${URG_CLASS[u] || ""} ${u === value ? "on" : ""}"><b>${escapeHTML(u)}</b></span>`)
-          .join("")}
-      </div>`;
-  }
+  // ---------- 가상 사건 (이번 세션, 브라우저 메모리에만) ----------
+  // 저장하지 않는다: 서버·localStorage·sessionStorage 어디에도 쓰지 않고, 새로 고치면 사라진다.
+  const STATUSES = ["접수", "검토 중", "배정됨", "조치 중", "종결"];
+  const cases = [];
+  let currentCaseId = null; // HR 화면에서 보고 있는 사건
+  let lastCaseId = null; // 직원 화면에서 방금 제출한 사건
+  const findCase = (id) => cases.find((c) => c.id === id);
 
-  // 민감사안 줄 — AI가 실패했거나 확장 항목을 확인할 수 없으면 늘 '확인 불가 · 사람 검토'
-  function sensitiveRow(isAI, extra) {
-    const unknown = (sensitiveCfg && sensitiveCfg.fallback_display) || FALLBACK_SENSITIVE;
-    if (!isAI || !extra) {
-      return `
-      <div class="verdict-row">
-        <p class="micro"><b>SENSITIVE</b>민감사안</p>
-        <p class="sensitive-unknown">${escapeHTML(unknown)}</p>
-        <p class="reason-sub">${isAI ? "AI가 민감사안 항목을 정해진 형식으로 돌려주지 않았습니다." : "규칙 분류는 민감사안을 판단하지 않습니다."} 괴롭힘·안전 등이 의심되거나 분류가 불확실하면 사람이 직접 검토해 주세요.</p>
-      </div>`;
-    }
-    const s = extra.sensitive;
-    if (!s.review_needed) {
-      return `
-      <div class="verdict-row">
-        <p class="micro"><b>SENSITIVE</b>민감사안</p>
-        <p class="sensitive-none">검토 표시 없음</p>
-        <p class="reason-sub">AI가 민감사안 유형을 찾지 못했다는 뜻이며, 안전하다는 판정은 아닙니다.</p>
-      </div>`;
-    }
-    return `
-      <div class="verdict-row sensitive-on">
-        <p class="micro"><b>SENSITIVE</b>민감사안</p>
-        <p class="sensitive-flag">${escapeHTML((sensitiveCfg && sensitiveCfg.label) || "민감사안 검토 필요")}</p>
-        ${s.types.length ? `<p class="sensitive-types">${s.types.map((t) => `<span>${escapeHTML(t)}</span>`).join("")}</p>` : ""}
-        ${s.basis ? `<p class="reason-sub">${escapeHTML(s.basis)}</p>` : ""}
-      </div>`;
-  }
-
-  // 권장 검토 담당 · 권장 후속 조치 · 고충 안내 · HR 검토 대기
-  function supportRows(isAI, extra, category) {
+  function defaultRouting(category, type) {
     const rc = routingCfg || {};
-    let role, actions, isDefault = false;
-    if (isAI && extra) {
-      role = extra.owner_role;
-      actions = extra.actions;
-    } else {
-      // AI 실패 시: routing.json의 기본값. 고충을 골랐다면 지정된 고충처리 담당자를 권한다.
-      isDefault = true;
-      role = submitType === "grievance"
-        ? (rc.sensitive_role && rc.sensitive_role.default) || "지정된 고충처리 담당자"
-        : (category && rc.category_default_role && rc.category_default_role[category]) || "HR 담당자";
-      actions = (category && rc.fallback_actions && rc.fallback_actions[category]) || ["분류가 불확실하므로 HR 담당자가 원문 맥락을 직접 확인"];
-    }
-    const sensitiveCase = submitType === "grievance" || (isAI && extra && extra.sensitive.review_needed);
-    const guide = (sensitiveCfg && sensitiveCfg.sensitive_guidance) || [];
-    const path = (sensitiveCfg && sensitiveCfg.report_path_notice) || "";
-    return `
-      <div class="verdict-row">
-        <p class="micro"><b>OWNER</b>권장 검토 담당 ${isDefault ? `<span class="tmp-tag">기본값</span>` : ""}</p>
-        <p class="owner">${escapeHTML(role)}</p>
-      </div>
-      <div class="verdict-row">
-        <p class="micro"><b>NEXT</b>권장 후속 조치 ${isDefault ? `<span class="tmp-tag">기본값</span>` : ""}</p>
-        <ol class="actions">${actions.map((a) => `<li>${escapeHTML(a)}</li>`).join("")}</ol>
-      </div>
-      ${sensitiveCase ? `
-      <div class="verdict-row care">
-        <p class="micro"><b>CARE</b>민감한 고충 안내</p>
-        <ul class="care-list">${guide.map((g) => `<li>${escapeHTML(g)}</li>`).join("")}${path ? `<li>${escapeHTML(path)}</li>` : ""}</ul>
-      </div>` : ""}
-      <div class="verdict-row hr-box">
-        <p class="hr-title">HR 검토 대기 <span>실습용</span></p>
-        <p class="reason-sub">실제 서비스에서는 권한 있는 HR 담당자가 이 결과를 검토하고 배정합니다. ${escapeHTML(rc.notice || "권장 담당과 후속 조치는 참고 정보이며 자동으로 배정되지 않습니다.")} 이 화면은 내용을 전송하거나 저장하지 않습니다.</p>
-      </div>`;
+    const owner = type === "grievance"
+      ? (rc.sensitive_role && rc.sensitive_role.default) || "지정된 고충처리 담당자"
+      : (category && rc.category_default_role && rc.category_default_role[category]) || "HR 담당자";
+    const actions = (category && rc.fallback_actions && rc.fallback_actions[category]) || ["분류가 불확실하므로 HR 담당자가 원문 맥락을 직접 확인"];
+    return { owner, actions };
   }
+
+  function createCase({ type, original, finalText, maskedInfo, nameKept, ai, rule }) {
+    const n = cases.length + 1;
+    const isAI = ai.source === "ai" && ai.extra;
+    const base = isAI ? { owner: ai.extra.owner_role, actions: ai.extra.actions } : defaultRouting(ai.category, type);
+    const c = {
+      id: `VD-${String(n).padStart(3, "0")}`,
+      createdAt: new Date().toLocaleString("ko-KR"),
+      type, original, finalText, maskedInfo, nameKept, ai, rule,
+      hr: {
+        category: ai.category || "",
+        urgency: ai.urgency || "",
+        sensitive: isAI ? (ai.extra.sensitive.review_needed ? "검토 필요" : "해당 없음") : "미정",
+        owner: base.owner,
+        actions: base.actions.join("\n"),
+        status: "접수",
+        note: "",
+        result: "",
+      },
+      history: [],
+    };
+    cases.push(c);
+    return c;
+  }
+
+  // ---------- 직원 화면: 쉬운 말 안내만 ----------
+  const URG_PLAIN = {
+    높음: "빠른 확인이 필요한 내용으로 보여, 먼저 검토될 수 있습니다.",
+    보통: "검토 후 개선이나 조치가 필요한 내용으로 보입니다.",
+    낮음: "건의나 문의로 보여, 순서대로 검토됩니다.",
+  };
+  const TYPE_LABEL = { general: "일반 건의", grievance: "개인 고충·신고" };
 
   function renderVerdict(state) {
-    const catNames = criteria ? criteria.priority.order : [];
-    const urgNames = criteria ? criteria.urgency_levels.map((u) => u.name) : [];
     const out = $("#result");
     const meta = $("#verdict-meta");
-
+    if (meta) meta.textContent = "";
     if (!state || state.loading) {
       out.className = "verdict-panel idle";
-      if (meta) meta.textContent = "Gemini 판정 · 실패 시 규칙";
       out.innerHTML = `
         <div class="verdict-top">
-          <p class="micro"><b>CATEGORY</b>분류 칸</p>
           <p class="idle-msg">${state && state.loading ? "AI가 의견을 분석하고 있습니다…" : "분석할 의견을 기다리고 있습니다."}</p>
-        </div>
-        <div class="verdict-row">
-          <p class="micro"><b>URGENCY</b>긴급도</p>
-          ${urgencyScale(urgNames, null)}
+          <p class="reason-sub">의견을 입력하고 개인정보를 확인한 뒤 'AI로 분석'을 누르면 안내가 여기에 나타납니다.</p>
         </div>`;
       return;
     }
-
     if (state.blocked) {
-      // 서버 재검사에서 직접 식별정보가 발견돼 AI로 보내지 않은 경우 — 분류하지 않고 수정을 안내한다
       out.className = "verdict-panel";
-      if (meta) meta.textContent = "AI로 보내지 않음";
       out.innerHTML = `
         <div class="fallback-note blocked-note" role="alert">
           <strong>개인정보가 남아 있어 AI로 보내지 않았습니다.</strong>
@@ -228,48 +191,195 @@
         </div>`;
       return;
     }
+    renderEmployeeResult(state.caseId);
+  }
 
-    const { r, masked, maskedInfo, source, model, aiError, rule, extra } = state;
-    const isAI = source === "ai";
-    if (meta) meta.textContent = isAI ? `Gemini 판정 · ${model || ""}` : "규칙 기반 임시 분류 · AI 미사용";
-    const tmp = isAI ? "" : `<span class="tmp-tag">임시</span>`;
+  function renderEmployeeResult(caseId) {
+    const c = findCase(caseId);
+    if (!c) return renderVerdict(null);
+    const out = $("#result");
+    const isAI = c.ai.source === "ai";
+    const extra = c.ai.extra;
+    const cat = c.ai.category;
+    const sensitive = c.type === "grievance" || (isAI && extra && extra.sensitive.review_needed);
+    const guide = (sensitiveCfg && sensitiveCfg.sensitive_guidance) || [];
+    const path = (sensitiveCfg && sensitiveCfg.report_path_notice) || "";
+    const owner = c.hr.owner;
     out.className = "verdict-panel";
     out.innerHTML = `
       ${isAI ? "" : `
       <div class="fallback-note" role="status">
-        <strong>AI 분석 실패 — AI 없이 규칙으로 갈랐습니다.</strong>
-        <span>${escapeHTML(friendlyError(aiError))} 아래는 규칙 기반 임시 분류로, 낱말만 비교하므로 정확도가 낮습니다.</span>
-        ${aiError ? `<details class="err-detail"><summary>오류 자세히</summary><code>${escapeHTML(aiError)}</code></details>` : ""}
+        <strong>지금은 AI 분석이 되지 않아, AI 없이 규칙으로 갈랐습니다.</strong>
+        <span>아래 안내는 임시이며, HR 담당자가 직접 확인합니다.</span>
       </div>`}
       <div class="verdict-top">
-        <p class="micro"><b>CATEGORY</b>분류 칸 ${tmp}</p>
-        <div class="verdict-cat ${r.category ? "" : "none"}">${escapeHTML(r.category || NO_RESULT)}</div>
+        <p class="micro"><b>RECEIVED</b>의견을 확인했습니다</p>
+        <p class="emp-topic">${cat ? `<b>${escapeHTML(cat)}</b> 관련 의견으로 보입니다.` : "어떤 분야의 의견인지 자동으로 정하지 못했습니다."}</p>
+        ${c.ai.urgency ? `<p class="reason-sub">${escapeHTML(URG_PLAIN[c.ai.urgency] || "")}</p>` : ""}
+        ${isAI && c.ai.reason ? `<p class="emp-why">이렇게 본 이유 · ${escapeHTML(c.ai.reason)}</p>` : ""}
       </div>
       <div class="verdict-row">
-        <p class="micro"><b>URGENCY</b>긴급도 ${tmp}</p>
-        ${urgencyScale(urgNames, r.urgency)}
+        <p class="micro"><b>NEXT</b>다음 단계</p>
+        <p class="emp-next"><b>${escapeHTML(owner)}</b>가 검토할 수 있도록 HR 담당자가 내용을 확인합니다.</p>
+        ${isAI && extra && extra.needs_more_info ? `<p class="reason-sub">검토 과정에서 상황을 더 확인해야 할 수 있습니다.</p>` : ""}
+        <p class="reason-sub">실습용이라 실제로 전달되지 않습니다.</p>
       </div>
-      ${sensitiveRow(isAI, extra)}
-      <div class="verdict-row">
-        <p class="micro"><b>REASON</b>판단 이유</p>
-        <p class="reason">${escapeHTML(r.reason)}</p>
-        ${isAI && extra && extra.needs_more_info ? `<p class="more-info"><b>추가 확인 필요</b> ${escapeHTML(extra.info_to_check || "정확한 상황 확인이 필요합니다.")}</p>` : ""}
+      ${sensitive ? `
+      <div class="verdict-row care">
+        <p class="micro"><b>CARE</b>민감한 내용일 수 있어요</p>
+        <ul class="care-list">${guide.map((g) => `<li>${escapeHTML(g)}</li>`).join("")}${path ? `<li>${escapeHTML(path)}</li>` : ""}</ul>
+      </div>` : ""}
+      <div class="verdict-row hr-box">
+        <p class="hr-title">가상 접수번호 ${escapeHTML(c.id)} <span>실습용</span></p>
+        <p class="emp-status">진행 상태 · <b>${escapeHTML(c.hr.status)}</b></p>
+        ${c.hr.status === "종결" && c.hr.result ? `<p class="emp-result">처리 결과 · ${escapeHTML(c.hr.result)}</p>` : ""}
+        <button type="button" class="btn-secondary emp-to-hr" data-case="${escapeHTML(c.id)}">HR 검토 화면에서 보기 (시뮬레이션)</button>
       </div>
-      ${supportRows(isAI, extra, r.category)}
       <div class="verdict-foot">
-        <p class="foot-label">분류에 쓴 최종 문장 <span>${escapeHTML(maskedInfo)}</span></p>
-        <p class="masked-text">${highlightMasks(masked)}</p>
-        ${isAI && rule ? `
-        <p class="compare-line">규칙 분류기 판정: <b>${escapeHTML(rule.category || NO_RESULT)}</b> · <b>${escapeHTML(rule.urgency || NO_RESULT)}</b></p>` : ""}
-        ${(rule || r).categoryHits ? `
-        <details class="mini-disclosure">
-          <summary>규칙 분류기의 칸별 일치 단어 수</summary>
-          <ol class="hits">${hitRows(catNames, (rule || r).categoryHits, (rule || r).category)}</ol>
-        </details>` : ""}
+        <p class="foot-label">AI 분석에 쓴 문장</p>
+        <p class="masked-text">${highlightMasks(c.finalText)}</p>
       </div>`;
+    out.querySelector(".emp-to-hr").addEventListener("click", () => openHR(c.id));
   }
 
-  // ---------- 분류 탭 ----------
+  // ---------- HR 검토 화면 (시뮬레이션) ----------
+  function openHR(caseId) {
+    currentCaseId = caseId || currentCaseId;
+    $("#tab-hr").click();
+  }
+
+  function renderHR() {
+    const list = $("#hr-list");
+    $("#hr-count").textContent = cases.length ? `${cases.length}건 · 이번 세션만` : "";
+    if (!cases.length) {
+      list.innerHTML = `<li class="hr-empty">아직 제출된 의견이 없습니다. 직원 화면에서 가상 의견을 제출해 보세요.</li>`;
+      $("#hr-detail").innerHTML = `<div class="verdict-top"><p class="idle-msg">검토할 의견이 없습니다.</p></div>`;
+      $("#hr-meta").textContent = "";
+      return;
+    }
+    if (!findCase(currentCaseId)) currentCaseId = cases[cases.length - 1].id;
+    list.innerHTML = cases.slice().reverse().map((c) => `
+      <li>
+        <button type="button" class="hr-item ${c.id === currentCaseId ? "on" : ""}" data-case="${escapeHTML(c.id)}">
+          <span class="hr-item-top"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span><span class="hr-status">${escapeHTML(c.hr.status)}</span></span>
+          <span class="hr-item-text">${escapeHTML(c.finalText)}</span>
+          <span class="hr-item-tags">
+            <span>${escapeHTML(c.hr.category || "칸 미정")}</span>
+            ${c.hr.urgency ? `<span class="u-text ${URG_CLASS[c.hr.urgency] || ""}">${escapeHTML(c.hr.urgency)}</span>` : ""}
+            ${c.hr.sensitive === "검토 필요" ? `<span class="hr-flag">민감사안</span>` : c.hr.sensitive === "미정" ? `<span class="hr-flag unknown">민감 미정</span>` : ""}
+          </span>
+        </button>
+      </li>`).join("");
+    list.querySelectorAll(".hr-item").forEach((b) =>
+      b.addEventListener("click", () => {
+        currentCaseId = b.dataset.case;
+        renderHR();
+      })
+    );
+    renderHRDetail(findCase(currentCaseId));
+  }
+
+  function options(values, selected) {
+    return values.map((v) => `<option value="${escapeHTML(v)}" ${v === selected ? "selected" : ""}>${escapeHTML(v || "미정")}</option>`).join("");
+  }
+
+  function renderHRDetail(c) {
+    const box = $("#hr-detail");
+    const isAI = c.ai.source === "ai";
+    const extra = c.ai.extra;
+    const cats = criteria.priority.order;
+    const urgs = criteria.urgency_levels.map((u) => u.name);
+    const roles = (routingCfg && routingCfg.roles) || ["HR 담당자"];
+    const aiSens = isAI && extra ? (extra.sensitive.review_needed ? "검토 필요" : "해당 없음") : "미정";
+    const aiOwner = isAI && extra ? extra.owner_role : null;
+    const diff = (hrVal, aiVal) => (aiVal && hrVal !== aiVal ? `<span class="hr-changed">AI 추천: ${escapeHTML(aiVal)}</span>` : "");
+    const actions = c.hr.actions.split("\n").map((s) => s.trim()).filter(Boolean);
+    $("#hr-meta").textContent = `${c.id} · ${c.createdAt}`;
+    box.className = "verdict-panel";
+    box.innerHTML = `
+      <div class="verdict-row">
+        <p class="micro"><b>CASE</b>${escapeHTML(c.id)} · ${escapeHTML(TYPE_LABEL[c.type] || "")} · ${escapeHTML(c.createdAt)}</p>
+        <p class="micro"><b>ORIGINAL</b>원문 <span class="micro-note">이 브라우저 안에서만 보입니다 · 실제 HR에 전달되지 않음</span></p>
+        <p class="hr-original">${escapeHTML(c.original)}</p>
+      </div>
+      <div class="verdict-row">
+        <p class="micro"><b>MASKED</b>AI 분석용 문장 <span class="micro-note">${escapeHTML(c.maskedInfo)}</span></p>
+        <p class="masked-text">${highlightMasks(c.finalText)}</p>
+        ${c.nameKept ? `<p class="more-info"><b>주의</b> 이름일 수 있는 말 ${c.nameKept}곳을 제출자가 '이름 아님'으로 두고 보냈습니다.</p>` : ""}
+      </div>
+
+      <div class="verdict-row hr-ai">
+        <p class="micro"><b>AI</b>AI 추천 <span class="micro-note">${isAI ? `Gemini · ${escapeHTML(c.ai.model || "")}` : "AI 없이 규칙으로 갈랐습니다 (임시)"}</span></p>
+        ${isAI ? "" : `<p class="reason-sub">${escapeHTML(friendlyError(c.ai.error))} 규칙 분류는 낱말만 비교하며 민감사안을 판단하지 않습니다.</p>`}
+        <dl class="hr-ai-grid">
+          <div><dt>분류 칸</dt><dd>${escapeHTML(c.ai.category || NO_RESULT)}</dd></div>
+          <div><dt>긴급도</dt><dd>${escapeHTML(c.ai.urgency || NO_RESULT)}</dd></div>
+          <div><dt>민감사안</dt><dd>${isAI && extra ? (extra.sensitive.review_needed ? `검토 필요 ${extra.sensitive.types.map((t) => `<span class="hr-flag">${escapeHTML(t)}</span>`).join(" ")}` : "검토 표시 없음") : escapeHTML((sensitiveCfg && sensitiveCfg.fallback_display) || FALLBACK_SENSITIVE)}</dd></div>
+          <div><dt>권장 담당</dt><dd>${escapeHTML(aiOwner || `${defaultRouting(c.ai.category, c.type).owner} (기본값)`)}</dd></div>
+        </dl>
+        ${isAI && extra && extra.sensitive.basis ? `<p class="reason-sub">${escapeHTML(extra.sensitive.basis)}</p>` : ""}
+        ${isAI && c.ai.reason ? `<p class="reason">${escapeHTML(c.ai.reason)}</p>` : ""}
+        ${isAI && extra && extra.needs_more_info ? `<p class="more-info"><b>추가 확인 필요</b> ${escapeHTML(extra.info_to_check || "정확한 상황 확인이 필요합니다.")}</p>` : ""}
+      </div>
+
+      <div class="verdict-row hr-form">
+        <p class="micro"><b>DECISION</b>HR 확정 <span class="micro-note">AI 추천은 기본값이며, 최종 결정은 사람이 합니다</span></p>
+        <div class="hr-fields">
+          <label>분류 칸<select data-f="category">${options(["", ...cats], c.hr.category)}</select>${diff(c.hr.category, c.ai.category)}</label>
+          <label>긴급도<select data-f="urgency">${options(["", ...urgs], c.hr.urgency)}</select>${diff(c.hr.urgency, c.ai.urgency)}</label>
+          <label>민감사안<select data-f="sensitive">${options(["미정", "검토 필요", "해당 없음"], c.hr.sensitive)}</select>${diff(c.hr.sensitive, aiSens === "미정" ? null : aiSens)}</label>
+          <label>담당 배정<select data-f="owner">${options(roles, c.hr.owner)}</select>${diff(c.hr.owner, aiOwner)}</label>
+          <label>처리 상태<select data-f="status">${options(STATUSES, c.hr.status)}</select></label>
+        </div>
+        <label class="hr-wide">후속 조치 <span class="micro-note">한 줄에 하나</span><textarea data-f="actions" rows="3">${escapeHTML(c.hr.actions)}</textarea></label>
+        <label class="hr-wide">검토 메모 <span class="micro-note">이 화면에만 남습니다</span><textarea data-f="note" rows="2">${escapeHTML(c.hr.note)}</textarea></label>
+        <label class="hr-wide">직원에게 보일 처리 결과 <span class="micro-note">'종결'일 때 직원 화면에 보입니다</span><textarea data-f="result" rows="2">${escapeHTML(c.hr.result)}</textarea></label>
+      </div>
+
+      <div class="verdict-row dept">
+        <p class="micro"><b>HANDOFF</b>담당 부서에 넘길 정보 (미리보기)</p>
+        <dl class="hr-ai-grid">
+          <div><dt>접수번호</dt><dd>${escapeHTML(c.id)}</dd></div>
+          <div><dt>담당</dt><dd>${escapeHTML(c.hr.owner)}</dd></div>
+          <div><dt>분류 칸 · 긴급도</dt><dd>${escapeHTML(c.hr.category || "미정")} · ${escapeHTML(c.hr.urgency || "미정")}</dd></div>
+        </dl>
+        <p class="masked-text">${highlightMasks(c.finalText)}</p>
+        <ol class="actions">${actions.map((a) => `<li>${escapeHTML(a)}</li>`).join("")}</ol>
+        <p class="reason-sub">원문, 제출자 정보, 민감사안 유형은 담당 부서에 넘기지 않습니다.${c.hr.sensitive === "검토 필요" ? " 민감사안은 권한 있는 HR 또는 지정된 고충처리 담당자가 직접 관리합니다." : ""} (실습용: 실제로 전달되지 않음)</p>
+      </div>
+
+      <div class="verdict-foot">
+        <details class="mini-disclosure">
+          <summary>AI 판단 근거 (내부 정보)</summary>
+          <p class="compare-line">규칙 분류기 판정: <b>${escapeHTML(c.rule.category || NO_RESULT)}</b> · <b>${escapeHTML(c.rule.urgency || NO_RESULT)}</b></p>
+          <p class="compare-line">${escapeHTML(c.rule.reason)}</p>
+          <ol class="hits">${hitRows(cats, c.rule.categoryHits, c.rule.category)}</ol>
+          ${c.ai.error ? `<p class="compare-line">AI 오류 원문</p><code class="err-raw">${escapeHTML(c.ai.error)}</code>` : ""}
+        </details>
+        ${c.history.length ? `
+        <p class="foot-label hr-hist-title">변경 기록</p>
+        <ol class="hr-history">${c.history.map((h) => `<li><span>${escapeHTML(h.at)}</span> ${escapeHTML(h.text)}</li>`).join("")}</ol>` : ""}
+      </div>`;
+
+    const NAMES = { category: "분류 칸", urgency: "긴급도", sensitive: "민감사안", owner: "담당", status: "상태", actions: "후속 조치", note: "메모", result: "처리 결과" };
+    box.querySelectorAll("[data-f]").forEach((el) =>
+      el.addEventListener("change", () => {
+        const f = el.dataset.f;
+        const before = c.hr[f];
+        const after = el.value;
+        if (before === after) return;
+        c.hr[f] = after;
+        const short = (v) => (v && v.length > 20 ? v.slice(0, 20) + "…" : v || "미정");
+        c.history.push({
+          at: new Date().toLocaleTimeString("ko-KR"),
+          text: ["actions", "note", "result"].includes(f) ? `${NAMES[f]} 수정` : `${NAMES[f]}: ${short(before)} → ${short(after)}`,
+        });
+        renderHR();
+      })
+    );
+  }
+
+  // ---------- 직원 화면: 입력 흐름 ----------
   const maskInfoText = (counts) =>
     Object.keys(counts).length
       ? Object.entries(counts).map(([k, n]) => `${k} ${n}개`).join(", ") + " 가림"
@@ -286,16 +396,19 @@
     const { masked, counts } = Mask.maskText(input);
     const risks = Privacy.findRisks(masked);
     const choices = {};
-    risks.forEach((r) => (choices[r.id] = r.suggest ? "generalize" : "keep")); // 기본은 일반화, 바꿀 수 있음
+    risks.forEach((r) => (choices[r.id] = r.suggest ? "generalize" : "keep")); // 기본은 가리기·일반화, 바꿀 수 있음
     pv = { original: input, masked, counts, risks, choices };
     renderPreview();
     renderVerdict(null);
   }
 
+  const nameKeptCount = () => (pv ? pv.risks.filter((r) => r.type === "이름" && pv.choices[r.id] === "keep").length : 0);
+
   function renderPreview() {
     const box = $("#preview");
     const { original, masked, counts, risks, choices } = pv;
     const finalText = Privacy.applyChoices(masked, risks, choices);
+    const kept = nameKeptCount();
     box.hidden = false;
     box.innerHTML = `
       <div class="col-head pv-head">
@@ -311,13 +424,13 @@
         ${risks.length ? `
         <ul class="risk-list">
           ${risks.map((r) => `
-            <li class="risk">
+            <li class="risk ${r.type === "이름" ? "risk-name" : ""}">
               <span class="risk-type">${escapeHTML(r.type)} · ${escapeHTML(r.label)}</span>
               <span class="risk-text"><b>${escapeHTML(r.text)}</b>${r.suggest ? ` → ${escapeHTML(r.suggest)}` : ""}</span>
               ${r.suggest ? `
               <span class="risk-toggle" role="group" aria-label="${escapeHTML(r.text)} 처리">
-                <button type="button" data-id="${r.id}" data-v="keep" aria-pressed="${choices[r.id] === "keep"}">사건 정보로 유지</button>
-                <button type="button" data-id="${r.id}" data-v="generalize" aria-pressed="${choices[r.id] === "generalize"}">일반화</button>
+                <button type="button" data-id="${r.id}" data-v="keep" aria-pressed="${choices[r.id] === "keep"}">${escapeHTML((r.labels && r.labels.keep) || "사건 정보로 유지")}</button>
+                <button type="button" data-id="${r.id}" data-v="generalize" aria-pressed="${choices[r.id] === "generalize"}">${escapeHTML((r.labels && r.labels.generalize) || "일반화")}</button>
               </span>` : `<span class="risk-hint">사건 정보로 유지하되, 다른 정보와 합쳐 특정되지 않는지 확인</span>`}
             </li>`).join("")}
         </ul>` : `<p class="pv-none">자동으로 찾은 부분은 없습니다. 그래도 사람을 알아볼 수 있는 내용이 없는지 한 번 더 확인해 주세요.</p>`}
@@ -325,6 +438,7 @@
       </div>
       <label for="final-text" class="pv-label">AI에 보낼 최종 문장 <span>직접 고칠 수 있습니다</span></label>
       <textarea id="final-text" rows="3">${escapeHTML(finalText)}</textarea>
+      ${kept ? `<p class="pv-warn" role="status"><b>확인해 주세요</b> 이름일 수 있는 말 ${kept}곳을 그대로 보냅니다. 실제 사람 이름이라면 [가리기]를 눌러 주세요.</p>` : ""}
       <div class="pv-actions">
         <button type="button" id="pv-cancel" class="btn-secondary">다시 쓰기</button>
         <button type="button" id="analyze-btn" class="btn-primary">AI로 분석</button>
@@ -344,7 +458,7 @@
     $("#analyze-btn").addEventListener("click", runAnalyze);
   }
 
-  // 2단계: 확인한 최종 문장만 서버로 보낸다
+  // 2단계: 확인한 최종 문장만 서버로 보낸다 → 가상 사건을 만들어 직원 안내와 HR 화면에 보여 준다
   async function runAnalyze() {
     const finalInput = ($("#final-text").value || "").trim();
     if (!finalInput) {
@@ -356,31 +470,41 @@
     const all = { ...(pv ? pv.counts : {}) };
     Object.entries(counts).forEach(([k, n]) => (all[k] = (all[k] || 0) + n));
     const generalized = pv ? pv.risks.filter((r) => pv.choices[r.id] === "generalize" && r.suggest).length : 0;
-    const maskedInfo = maskInfoText(all) + (generalized ? ` · 주의 항목 ${generalized}곳 일반화` : "");
-    const rule = Rules.classify(masked, criteria, keywords); // 비교용 + AI 실패 시 대체용
+    const maskedInfo = maskInfoText(all) + (generalized ? ` · 주의 항목 ${generalized}곳 가림·일반화` : "");
+    const rule = Rules.classify(masked, criteria, keywords); // HR 화면의 비교용 + AI 실패 시 대체용
     const btn = $("#analyze-btn");
     btn.disabled = true;
     btn.textContent = "분석 중…";
     renderVerdict({ loading: true });
+    let ai;
     try {
-      const data = await callAI([{ id: "input", text: masked }], "full"); // 분류 탭은 확장 모드
+      const data = await callAI([{ id: "input", text: masked }], "full"); // 직원 화면은 확장 모드
       const x = data.results.find((it) => it.id === "input");
       if (x && x.blocked) {
         renderVerdict({ blocked: true, message: x.error });
         return;
       }
       if (!x || !x.ok) throw new Error((x && x.error) || "AI 응답에 결과가 없습니다");
-      renderVerdict({
-        source: "ai", model: data.model, rule, masked, maskedInfo, extra: x.extra || null,
-        r: { category: x.category, urgency: x.urgency, reason: x.reason },
-      });
+      ai = { source: "ai", model: data.model, category: x.category, urgency: x.urgency, reason: x.reason, extra: x.extra || null, error: null };
     } catch (err) {
       // AI가 실패하면 규칙 분류기로 임시 분류한다
-      renderVerdict({ source: "rule", r: rule, masked, maskedInfo, aiError: err.message });
+      ai = { source: "rule", model: null, category: rule.category, urgency: rule.urgency, reason: rule.reason, extra: null, error: err.message };
     } finally {
       btn.disabled = false;
       btn.textContent = "AI로 분석";
     }
+    const c = createCase({
+      type: submitType,
+      original: pv ? pv.original : finalInput,
+      finalText: masked,
+      maskedInfo,
+      nameKept: nameKeptCount(),
+      ai,
+      rule: { category: rule.category, urgency: rule.urgency, reason: rule.reason, categoryHits: rule.categoryHits },
+    });
+    lastCaseId = c.id;
+    currentCaseId = c.id;
+    renderVerdict({ caseId: c.id });
   }
 
   // ---------- 채점 탭 ----------
@@ -731,6 +855,9 @@
     });
     $("#score-btn").addEventListener("click", runScore);
     $("#ai-score-btn").addEventListener("click", runAIScore);
+    // 탭을 바꿀 때 HR 화면과 직원 안내(진행 상태 반영)를 다시 그린다
+    $("#tab-hr").addEventListener("click", () => criteria && renderHR());
+    $("#tab-classify").addEventListener("click", () => lastCaseId && renderEmployeeResult(lastCaseId));
     try {
       [criteria, keywords] = await Promise.all([loadJSON("criteria.json"), loadJSON("keywords.json")]);
       $("#cat-list").innerHTML = criteria.categories
