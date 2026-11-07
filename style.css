@@ -542,6 +542,9 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
 .emp-practice span { color: var(--faint); }
 .emp-to-hr { margin-top: 10px; }
 
+.reset-note { margin: -16px 0 20px; padding: 10px 14px; border-left: 4px solid var(--green); background: var(--green-tint); font-size: 14px; font-weight: 700; color: var(--ink); }
+.reset-note[hidden] { display: none; }
+
 /* 대시보드 */
 .dash-metrics { grid-template-columns: repeat(4, 1fr); }
 .dash-metrics .metric:nth-child(4n + 1) { border-left: 0; }
@@ -701,4 +704,59 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
   #panel-classify .pv-card { padding: 18px 16px; }
   #panel-classify .verdict-top, #panel-classify .verdict-row, #panel-classify .verdict-foot, #panel-classify .fallback-note { padding-left: 18px; padding-right: 18px; }
   #panel-classify .btn-primary, #panel-classify .btn-secondary { min-height: 48px; }
+}
+
+/* ---------- HR 사건 검토: 요약 중심 카드 (2026-11-07) ---------- */
+#hr-detail.hr-case { border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04); }
+.hr-sec { padding: 18px 22px; }
+.hr-sec + .hr-sec { border-top: 1px solid #eceef2; }
+.hr-sec-title { margin: 0 0 10px; font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: -0.01em; }
+.hr-case .hr-head { display: block; }
+.hr-case-id { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+.hr-case-id b { font-size: 18px; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; }
+.hr-case .stepper { margin: 0; }
+.sens-pill { display: inline-block; margin: 10px 0 0; padding: 6px 12px; font-size: 13px; font-weight: 800; color: var(--red-ink); background: var(--red-tint); border-radius: 10px; }
+.hr-case .hr-original { font-size: 15px; line-height: 1.65; margin: 0; }
+.ai-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 10px; }
+.ai-sum > div { padding: 10px 12px; background: var(--surface-2); border-radius: 12px; min-width: 0; }
+.ai-sum dt { font-size: 12px; font-weight: 700; color: var(--muted); }
+.ai-sum dd { margin: 2px 0 0; font-size: 14px; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
+.ai-sum dd.u-text { font-size: 14px; }
+.hr-case .reason { font-size: 14px; }
+.ai-actions { margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.hr-case .hr-form.stage-on { box-shadow: inset 4px 0 0 var(--red); }
+.hr-fields-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hr-case .hr-form select, .hr-case .hr-form textarea { border-radius: 10px; }
+.hr-case .hr-form textarea { min-height: 64px; padding: 10px 12px; font-size: 14px; }
+.stage-hint { margin: 0; font-size: 14px; color: var(--ink-2); }
+.hr-ai-grid.confirmed { margin-bottom: 12px; }
+.assign-state { margin-left: 4px; }
+.act-title { margin-top: 4px; }
+.act-title span { font-weight: 500; color: var(--faint); margin-left: 6px; }
+.hr-case .act input[type="text"] { border-radius: 10px; }
+.hr-cta { display: flex; justify-content: flex-end; margin-top: 16px; }
+.hr-case .btn-primary, .hr-case .btn-secondary { border-radius: 12px; min-height: 44px; }
+.hr-case .blocked-note { margin-top: 14px; border-radius: 12px; border-bottom: 0; background: var(--surface-2); }
+.hr-case .summary-box { margin-top: 12px; padding: 12px 14px; border-radius: 12px; }
+.hr-more { padding: 12px 22px 14px; border-radius: 0; }
+.hr-more .mini-disclosure { margin-top: 4px; }
+.hr-more .mini-disclosure summary { padding: 6px 0; }
+.more-body { margin-top: 8px; padding: 14px 16px; background: var(--surface); border: 1px solid #eceef2; border-radius: 12px; }
+.more-body .info-ai { border: 0; }
+.more-sub { margin-top: 14px; }
+.hr-case .info-hr { border-left: 0; }
+@media (max-width: 860px) {
+  .ai-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 접수 목록을 가로로 넘겨 보는 띠로 바꿔 세로 스크롤을 줄인다 */
+  .hr-list { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 6px; position: relative; }
+  .hr-list > li { flex: 0 0 min(78%, 300px); scroll-snap-align: start; }
+  .hr-list .hr-item { height: 100%; }
+  .hr-board { gap: 20px; grid-template-columns: minmax(0, 1fr); }
+  .hr-board > .col { min-width: 0; }
+}
+@media (max-width: 560px) {
+  .hr-sec { padding: 16px; }
+  .hr-more { padding: 10px 16px 12px; }
+  .hr-fields-3 { grid-template-columns: 1fr; }
+  .hr-cta .btn-primary, .hr-cta .btn-secondary { width: 100%; }
 }

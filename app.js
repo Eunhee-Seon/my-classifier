@@ -208,6 +208,34 @@
     return c;
   }
 
+  // 시뮬레이션 초기화: 이 브라우저 메모리의 가상 사건만 처음(demo_cases.json) 상태로 되돌린다.
+  // 파일·서버·분류 기준·채점 데이터는 건드리지 않는다. demo_cases.json은 처음 읽은 내용을 그대로 다시 쓴다.
+  let demoData = null;
+  function resetSimulation() {
+    const ok = window.confirm([
+      "시뮬레이션을 초기 가상 데이터 상태로 되돌릴까요?",
+      "",
+      "· 이번에 제출한 가상 의견이 목록에서 사라집니다.",
+      "· 처리 상태, 담당 부서, 검토 의견, 후속 조치 체크가 처음 상태로 돌아갑니다.",
+      "· 이 브라우저의 시뮬레이션만 바뀌며, 파일이나 서버 데이터는 삭제되지 않습니다.",
+    ].join(String.fromCharCode(10)));
+    if (!ok) return;
+    cases.length = 0;
+    currentCaseId = null;
+    lastCaseId = null;
+    flash = null;
+    Object.keys(dashFilter).forEach((k) => (dashFilter[k] = ""));
+    if (demoData) loadDemoCases(demoData);
+    renderVerdict(null); // 직원 화면의 지난 결과도 지운다 (지워진 가상 사건을 가리키지 않게)
+    refreshViews();
+    const note = $("#reset-note");
+    if (note) {
+      note.textContent = `초기 가상 데이터 ${cases.length}건으로 되돌렸습니다.`;
+      note.hidden = false;
+      setTimeout(() => (note.hidden = true), 4000);
+    }
+  }
+
   // 과제용 가상 사례: demo_cases.json (practice.json의 가상 문장 + 미리 받아 둔 실제 Gemini 응답)
   function loadDemoCases(d) {
     (d.cases || []).forEach((dc) => {
@@ -439,8 +467,12 @@
       })
     );
     renderHRDetail(findCase(currentCaseId));
+    // 좁은 화면에서는 목록이 가로 띠가 되므로, 고른 건이 띠 안에 보이게 맞춘다
+    const on = list.querySelector(".hr-item.on");
+    if (on && window.matchMedia("(max-width: 860px)").matches) list.scrollLeft = on.parentElement.offsetLeft - list.offsetLeft;
   }
 
+  // HR 사건 검토: ① 기본정보 ② 접수 내용 ③ AI 분석 요약 ④ HR 검토 및 조치(상태에 맞는 버튼 하나) + 접힌 상세정보
   function renderHRDetail(c) {
     const box = $("#hr-detail");
     const isAI = c.ai.source === "ai";
@@ -456,164 +488,131 @@
     const acting = st === "처리 중";
     const done = st === "처리 완료";
     const aiOwnerRaw = extra ? extra.owner_role : null;
-    const dis = (on) => (on ? "" : "disabled");
-    const changed = {
-      category: c.hr.category !== (c.ai.category || ""),
-      urgency: c.hr.urgency !== (c.ai.urgency || ""),
-      sensitive: aiSens !== "미정" && c.hr.sensitive !== aiSens,
-    };
     const differs = differsFromAI(c);
     const generalPick = prot && c.hr.ownerDraft && !SAFE_ROLES.includes(c.hr.ownerDraft);
     const doneN = c.hr.actions.filter((a) => a.text && a.done).length;
     const actN = c.hr.actions.filter((a) => a.text).length;
     const handoff = c.hr.actions.filter((a) => a.text.trim());
-    const cmpRow = (label, f, ai, values) => `
-      <tr class="${changed[f] ? "changed" : ""}">
-        <th scope="row">${label}</th>
-        <td>${escapeHTML(ai || NO_RESULT)}</td>
-        <td><select data-f="${f}" aria-label="${label} HR 최종" ${dis(reviewing)}>${options(values, c.hr[f])}</select></td>
-      </tr>`;
-    const lockedHint = st === "접수" ? `<p class="lock-hint">'검토 시작'을 누르면 수정할 수 있습니다.</p>` : !reviewing ? `<p class="lock-hint">검토를 마치고 배정한 뒤에는 분류와 담당을 바꾸지 않습니다. (확정된 값)</p>` : "";
+    const aiNote = (f, aiVal) => (aiVal && c.hr[f] !== aiVal ? `<span class="hr-changed">AI: ${escapeHTML(aiVal)}</span>` : "");
+    const cta = `<button type="button" id="hr-next" class="${done ? "btn-secondary" : "btn-primary"}">${escapeHTML(done && c.showSummary ? "완료 내역 닫기" : NEXT_BUTTON[st])}</button>`;
     $("#hr-meta").textContent = `${c.id} · ${c.createdAt}`;
-    box.className = "verdict-panel";
-    box.innerHTML = `
-      ${takeFlash(c.id)}
-      <div class="verdict-top hr-head">
-        <div class="hr-head-main">
-          <p class="micro"><b>CASE</b>${escapeHTML(c.id)} · ${escapeHTML(TYPE_LABEL[c.type] || "")} · ${escapeHTML(c.createdAt)}${c.demo ? ` <span class="demo-tag">예시</span>` : ""}</p>
-          ${stepper(c)}
-          <p class="hr-head-state">${assignBadge(c)} <span class="hr-head-owner">담당 부서 · ${ownerText(c)}</span></p>
-          <p class="field-hint">${escapeHTML(STATUS_HELP[st])}</p>
+
+    // ④ 단계별 내용: 지금 해야 할 일에 필요한 입력만 보여 준다
+    let stage = "";
+    if (st === "접수") {
+      stage = `<p class="stage-hint">'검토 시작'을 누르면 분류 확정과 담당 부서 선택을 할 수 있습니다.</p>`;
+    } else if (reviewing) {
+      stage = `
+        <div class="hr-fields hr-fields-3">
+          <label>최종 분류<select data-f="category">${options(["", ...cats], c.hr.category)}</select>${aiNote("category", c.ai.category)}</label>
+          <label>긴급도<select data-f="urgency">${options(["", ...urgs], c.hr.urgency)}</select>${aiNote("urgency", c.ai.urgency)}</label>
+          <label>민감사안<select data-f="sensitive">${options(["미정", "검토 필요", "해당 없음"], c.hr.sensitive)}</select>${aiNote("sensitive", aiSens === "미정" ? null : aiSens)}</label>
         </div>
-        <button type="button" id="hr-next" class="${done ? "btn-secondary" : "btn-primary"}">${escapeHTML(done && c.showSummary ? "완료 내역 닫기" : NEXT_BUTTON[st])}</button>
-      </div>
-      ${done && c.showSummary ? `
-      <div class="verdict-row summary-box">
-        <p class="micro"><b>SUMMARY</b>완료 내역 <span class="micro-note">기록을 보여 줄 뿐, 새 접수를 만들지 않습니다</span></p>
-        <dl class="hr-ai-grid">
-          <div><dt>최종 분류 칸 · 긴급도</dt><dd>${escapeHTML(c.hr.category || "미정")} · ${escapeHTML(c.hr.urgency || "미정")}</dd></div>
-          <div><dt>민감사안</dt><dd>${escapeHTML(c.hr.sensitive)}</dd></div>
-          <div><dt>담당 부서</dt><dd>${ownerText(c)}</dd></div>
-          <div><dt>AI 추천과 다르게 정한 이유</dt><dd>${escapeHTML(c.hr.override || "없음")}</dd></div>
+        <label class="hr-wide">담당 부서
+          <select data-f="ownerDraft">${options(["", ...roles], c.hr.ownerDraft, (v) => (!v ? "선택 안 함" : v === rec ? `${v} (AI 추천)` : v))}</select>
+          ${!c.hr.ownerDraft ? `<button type="button" id="hr-pick-rec" class="btn-link">AI 추천(${escapeHTML(rec)}) 선택</button>` : `<span class="field-hint">'검토 완료 및 담당자 배정'을 누르면 배정이 확정됩니다.</span>`}
+        </label>
+        ${generalPick ? `<label class="check-line warn"><input type="checkbox" id="hr-general-ok" ${c.hr.generalOk ? "checked" : ""}> 민감사안일 수 있는 건을 일반 부서(${escapeHTML(c.hr.ownerDraft)})에 배정합니다. 원문과 민감 정보는 넘기지 않습니다.</label>` : ""}
+        ${differs || c.hr.override ? `<label class="hr-wide">AI 추천과 다르게 정한 이유 ${differs && !c.hr.override ? `<span class="need">적어 주세요</span>` : ""}<textarea data-f="override" rows="2">${escapeHTML(c.hr.override)}</textarea></label>` : ""}
+        <label class="hr-wide">검토 의견<textarea data-f="note" rows="2" placeholder="검토하면서 확인한 내용">${escapeHTML(c.hr.note)}</textarea></label>`;
+    } else {
+      stage = `
+        <dl class="hr-ai-grid confirmed">
+          <div><dt>최종 분류 · 긴급도</dt><dd>${escapeHTML(c.hr.category || "미정")} · ${escapeHTML(c.hr.urgency || "미정")}</dd></div>
+          <div><dt>담당 부서</dt><dd>${ownerText(c)} <span class="assign-state">${assignBadge(c)}</span></dd></div>
         </dl>
-        <p class="reason"><span class="lbl">HR 검토 의견</span>${escapeHTML(c.hr.note || "없음")}</p>
-        <p class="foot-label hr-sub-title">후속 조치</p>
-        <ol class="actions">${handoff.map((a) => `<li>${escapeHTML(a.text)} · ${a.done ? "완료" : "미완료"}</li>`).join("") || "<li>없음</li>"}</ol>
-        <p class="reason"><span class="lbl">조치 결과</span>${escapeHTML(c.hr.result || "없음")}</p>
-      </div>` : ""}
-      ${prot ? `
-      <div class="verdict-row care sens-box">
-        <p class="micro"><b>SENSITIVE</b>민감사안 검토 필요 · 지정된 고충처리 담당자 우선 검토 대상</p>
-        <ul class="care-list">
-          <li>AI는 사실관계나 위법 여부를 확정하지 않습니다. 표시는 '의심·검토 필요'라는 뜻입니다.</li>
-          <li>일반 담당 부서에 자동으로 배정하지 않습니다. 검토와 배정은 이 화면에서만 합니다.</li>
-          <li>실제 사건 조사와 보호 조치는 이 시스템에서 이루어지지 않습니다.</li>
-        </ul>
-      </div>` : ""}
-
-      <div class="verdict-row info-ai">
-        <p class="micro"><b>FOR AI</b>AI 분석용 정보 <span class="micro-note">외부 AI(Gemini)에 보낸 문장 · ${escapeHTML(c.maskedInfo)}</span></p>
-        <p class="masked-text">${highlightMasks(c.finalText)}</p>
-        ${c.nameKept ? `<p class="more-info"><b>주의</b> 이름일 수 있는 말 ${c.nameKept}곳을 제출자가 '이름 아님'으로 두고 보냈습니다.</p>` : ""}
-        <p class="reason-sub">이름·연락처·사번·이메일 같은 식별정보를 줄이고, 사건의 유형과 긴급도를 판단할 맥락만 남긴 문장입니다.</p>
-      </div>
-      <div class="verdict-row info-hr">
-        <p class="micro"><b>FOR HR</b>HR 조사용 정보 <span class="micro-note">시뮬레이션 · 실제 HR에 전달되지 않음</span></p>
-        <p class="foot-label">접수 원문</p>
-        <p class="hr-original">${escapeHTML(c.original)}</p>
-        <details class="mini-disclosure">
-          <summary>실제 운영에서 다루는 조사용 정보와 열람 원칙</summary>
-          <ul class="care-list">
-            <li>신고 원문, 신고 대상자·관련 인물, 사건 일시·장소, 구체적인 경위, 증거·참고자료, 조사·후속 조치 기록</li>
-            <li>모든 HR 담당자가 모든 원문을 보지 않습니다. 업무상 필요와 사건별 접근권한에 따라 권한 있는 HR 또는 내부 감사 담당자만 봅니다.</li>
-            <li>원문은 보호된 저장소에 두고, 누가 언제 열람했는지 기록해야 합니다.</li>
-            <li>이 시뮬레이션에는 원문 저장소·로그인·접근권한 관리가 없습니다. 원문은 이 브라우저 메모리에만 있고 저장되지 않습니다.</li>
-          </ul>
-        </details>
-      </div>
-
-      <div class="verdict-row hr-ai">
-        <p class="micro"><b>AI</b>AI 추천 (최초 판정) <span class="micro-note">${isAI ? `Gemini · ${escapeHTML(c.ai.model || "")}` : "AI 없이 규칙으로 갈랐습니다 (임시)"}</span></p>
-        ${isAI ? "" : `<p class="reason-sub">${escapeHTML(friendlyError(c.ai.error))} 규칙 분류는 낱말만 비교하며 민감사안을 판단하지 않습니다.</p>`}
-        <dl class="hr-ai-grid">
-          <div><dt>분류 칸</dt><dd>${escapeHTML(c.ai.category || NO_RESULT)}</dd></div>
-          <div><dt>긴급도</dt><dd>${escapeHTML(c.ai.urgency || NO_RESULT)}</dd></div>
-          <div><dt>민감사안</dt><dd>${extra ? (extra.sensitive.review_needed ? `검토 필요 ${extra.sensitive.types.map((t) => `<span class="hr-flag">${escapeHTML(t)}</span>`).join(" ")}` : "검토 표시 없음") : escapeHTML((sensitiveCfg && sensitiveCfg.fallback_display) || FALLBACK_SENSITIVE)}</dd></div>
-          <div><dt>AI 추천 담당</dt><dd>${escapeHTML(rec)}${aiOwnerRaw && aiOwnerRaw !== rec ? `<span class="hr-changed">AI 원래 추천: ${escapeHTML(aiOwnerRaw)} → 민감사안이라 지정 담당으로 추천</span>` : ""}${!aiOwnerRaw ? `<span class="hr-changed">기본값</span>` : ""}</dd></div>
-        </dl>
-        ${isAI && c.ai.reason ? `<p class="reason"><span class="lbl">판단 이유</span>${escapeHTML(c.ai.reason)}</p>` : ""}
-        ${extra && extra.sensitive.basis ? `<p class="reason-sub">${escapeHTML(extra.sensitive.basis)}</p>` : ""}
-        ${extra && extra.needs_more_info ? `<p class="more-info"><b>추가 확인 필요</b> ${escapeHTML(extra.info_to_check || "정확한 상황 확인이 필요합니다.")}</p>` : ""}
-        <p class="foot-label hr-sub-title">AI 권장 후속 조치</p>
-        <ol class="actions">${c.aiActions.map((a) => `<li>${escapeHTML(a)}</li>`).join("")}</ol>
-      </div>
-
-      <div class="verdict-row hr-form ${reviewing ? "stage-on" : ""}">
-        <p class="micro"><b>REVIEW</b>검토 · 분류 확정과 담당 부서 선택 <span class="micro-note">AI 추천은 그대로 남고, HR이 정한 값이 최종입니다</span></p>
-        ${lockedHint}
-        <div class="cmp-wrap">
-          <table class="cmp">
-            <thead><tr><th scope="col">항목</th><th scope="col">AI 추천</th><th scope="col">HR 최종</th></tr></thead>
-            <tbody>
-              ${cmpRow("분류 칸", "category", c.ai.category, ["", ...cats])}
-              ${cmpRow("긴급도", "urgency", c.ai.urgency, ["", ...urgs])}
-              ${cmpRow("민감사안", "sensitive", aiSens === "미정" ? "확인 불가" : aiSens, ["미정", "검토 필요", "해당 없음"])}
-            </tbody>
-          </table>
-        </div>
-        <div class="hr-fields">
-          <label>배정할 담당 부서 <span class="micro-note">${c.hr.assigned ? "배정 확정됨" : "'검토 완료 및 담당자 배정'을 눌러야 확정됩니다"}</span>
-            <select data-f="ownerDraft" ${dis(reviewing)}>${options(["", ...roles], c.hr.assigned ? c.hr.owner : c.hr.ownerDraft, (v) => (!v ? "선택 안 함" : v === rec ? `${v} (AI 추천)` : v))}</select>
-            ${reviewing && !c.hr.ownerDraft ? `<button type="button" id="hr-pick-rec" class="btn-link">AI 추천 담당(${escapeHTML(rec)}) 고르기</button>` : ""}
-          </label>
-          <div class="assign-box">
-            <p class="foot-label">담당자 배정</p>
-            <p class="assign-state">${assignBadge(c)}</p>
-            <p class="field-hint">처리 상태와 따로 관리합니다.</p>
-          </div>
-        </div>
-        ${reviewing && generalPick ? `
-        <label class="check-line warn"><input type="checkbox" id="hr-general-ok" ${c.hr.generalOk ? "checked" : ""}> 민감사안일 수 있는 건을 일반 부서(${escapeHTML(c.hr.ownerDraft)})에 배정합니다. 원문과 민감 정보는 넘기지 않습니다.</label>` : ""}
-        <label class="hr-wide">AI 추천과 다르게 정한 이유 ${differs ? `<span class="need">AI 추천과 다르게 정했습니다${c.hr.override ? "" : " · 이유를 적어 주세요"}</span>` : `<span class="micro-note">다르게 정할 때 적습니다</span>`}<textarea data-f="override" rows="2" ${dis(reviewing)}>${escapeHTML(c.hr.override)}</textarea></label>
-        <label class="hr-wide">HR 검토 의견 <span class="micro-note">이 화면에만 남습니다</span><textarea data-f="note" rows="2" ${dis(reviewing || acting)}>${escapeHTML(c.hr.note)}</textarea></label>
-      </div>
-
-      <div class="verdict-row hr-form ${acting ? "stage-on" : ""}">
-        <p class="micro"><b>ACTION</b>후속 조치와 처리 결과 <span class="micro-note">${doneN}/${actN} 완료 · 모두 체크해도 자동으로 완료되지 않습니다</span></p>
+        <p class="foot-label act-title">후속 조치 <span>${doneN}/${actN} 완료 · 모두 체크해도 자동으로 완료되지 않습니다</span></p>
         <ul class="act-list">
           ${c.hr.actions.map((a, i) => `
             <li class="act ${a.done ? "done" : ""}">
-              <input type="checkbox" data-act-done="${i}" ${a.done ? "checked" : ""} ${a.text && (reviewing || acting) ? "" : "disabled"} aria-label="후속 조치 ${i + 1} 완료">
-              <input type="text" data-act-text="${i}" value="${escapeHTML(a.text)}" placeholder="후속 조치 ${i + 1} (비어 있음)" aria-label="후속 조치 ${i + 1} 내용" ${dis(reviewing || acting)}>
+              <input type="checkbox" data-act-done="${i}" ${a.done ? "checked" : ""} ${a.text && acting ? "" : "disabled"} aria-label="후속 조치 ${i + 1} 완료">
+              <input type="text" data-act-text="${i}" value="${escapeHTML(a.text)}" placeholder="후속 조치 ${i + 1} (비어 있음)" aria-label="후속 조치 ${i + 1} 내용" ${acting ? "" : "disabled"}>
             </li>`).join("")}
         </ul>
-        <label class="hr-wide">담당 부서의 조치 결과 <span class="micro-note">'처리 중'일 때 적습니다 · 처리 완료 후 직원 화면에 보입니다</span><textarea data-f="result" rows="2" ${dis(acting)}>${escapeHTML(c.hr.result)}</textarea></label>
-        ${acting ? `<label class="check-line"><input type="checkbox" id="hr-result-ok" ${c.hr.resultChecked ? "checked" : ""}> 담당 부서의 실제 조치 결과를 확인했습니다.</label>` : ""}
-      </div>
+        ${acting ? `
+        <label class="hr-wide">검토 의견<textarea data-f="note" rows="2">${escapeHTML(c.hr.note)}</textarea></label>
+        <label class="hr-wide">담당 부서의 조치 결과 <span class="micro-note">처리 완료 후 직원 화면에 보입니다</span><textarea data-f="result" rows="2">${escapeHTML(c.hr.result)}</textarea></label>
+        <label class="check-line"><input type="checkbox" id="hr-result-ok" ${c.hr.resultChecked ? "checked" : ""}> 담당 부서의 실제 조치 결과를 확인했습니다.</label>` : ""}
+        ${done && c.showSummary ? `
+        <div class="summary-box">
+          <p class="reason"><span class="lbl">검토 의견</span>${escapeHTML(c.hr.note || "없음")}</p>
+          <p class="reason"><span class="lbl">AI 추천과 다르게 정한 이유</span>${escapeHTML(c.hr.override || "없음")}</p>
+          <p class="reason"><span class="lbl">조치 결과</span>${escapeHTML(c.hr.result || "없음")}</p>
+          <p class="field-hint">기록을 보여 줄 뿐, 새 접수를 만들지 않습니다.</p>
+        </div>` : ""}`;
+    }
 
-      <div class="verdict-row dept">
-        <p class="micro"><b>HANDOFF</b>담당 부서에 넘길 정보 (미리보기)</p>
-        <dl class="hr-ai-grid">
-          <div><dt>접수번호</dt><dd>${escapeHTML(c.id)}</dd></div>
-          <div><dt>담당</dt><dd>${ownerText(c)}</dd></div>
-          <div><dt>분류 칸 · 긴급도</dt><dd>${escapeHTML(c.hr.category || "미정")} · ${escapeHTML(c.hr.urgency || "미정")}</dd></div>
+    box.className = "verdict-panel hr-case";
+    box.innerHTML = `
+      <section class="hr-sec hr-head">
+        <div class="hr-head-main">
+          <p class="hr-case-id"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span>${c.demo ? `<span class="demo-tag">예시</span>` : ""}</p>
+          ${stepper(c)}
+          ${prot ? `<p class="sens-pill">민감사안 · 지정 고충처리 담당자 우선 검토 필요</p>` : ""}
+        </div>
+      </section>
+
+      <section class="hr-sec info-hr">
+        <p class="hr-sec-title">접수 내용</p>
+        <p class="hr-original">${escapeHTML(c.original)}</p>
+      </section>
+
+      <section class="hr-sec hr-ai">
+        <p class="hr-sec-title">AI 분석 요약${isAI ? "" : ` <span class="tmp-tag">AI 실패 · 규칙 임시 분류</span>`}</p>
+        <dl class="ai-sum">
+          <div><dt>추천 분류</dt><dd>${escapeHTML(c.ai.category || NO_RESULT)}</dd></div>
+          <div><dt>긴급도</dt><dd class="u-text ${URG_CLASS[c.ai.urgency] || ""}">${escapeHTML(c.ai.urgency || NO_RESULT)}</dd></div>
+          <div><dt>추천 담당</dt><dd>${escapeHTML(rec)}</dd></div>
+          <div><dt>민감사안</dt><dd>${extra ? (extra.sensitive.review_needed ? `<span class="hr-flag">검토 필요</span>` : "표시 없음") : `<span class="hr-flag unknown">확인 불가</span>`}</dd></div>
         </dl>
-        <p class="masked-text">${highlightMasks(c.finalText)}</p>
-        <ol class="actions">${handoff.map((a) => `<li>${escapeHTML(a.text)}${a.done ? " (완료)" : ""}</li>`).join("")}</ol>
-        <p class="reason-sub">담당 부서에는 AI 분석용 문장만 넘기고, 원문·제출자 정보·민감사안 유형은 넘기지 않습니다.${prot ? " 민감사안은 권한 있는 HR 또는 지정된 고충처리 담당자가 직접 관리합니다." : ""} (실습용: 실제로 전달되지 않음)</p>
-      </div>
+        ${isAI && c.ai.reason ? `<p class="reason">${escapeHTML(c.ai.reason)}</p>` : ""}
+        ${extra && extra.needs_more_info ? `<p class="more-info"><b>추가 확인 필요</b> ${escapeHTML(extra.info_to_check || "정확한 상황 확인이 필요합니다.")}</p>` : ""}
+        ${c.aiActions.length ? `<ol class="actions ai-actions">${c.aiActions.map((a) => `<li>${escapeHTML(a)}</li>`).join("")}</ol>` : ""}
+      </section>
 
-      <div class="verdict-foot">
+      <section class="hr-sec hr-form ${st === "처리 완료" ? "" : "stage-on"}">
+        <p class="hr-sec-title">HR 검토 및 조치</p>
+        ${stage}
+        ${takeFlash(c.id)}
+        <div class="hr-cta">${cta}</div>
+      </section>
+
+      <div class="verdict-foot hr-more">
         <details class="mini-disclosure">
-          <summary>AI 판단 근거 (내부 정보)</summary>
-          <p class="compare-line">규칙 분류기 판정: <b>${escapeHTML(c.rule.category || NO_RESULT)}</b> · <b>${escapeHTML(c.rule.urgency || NO_RESULT)}</b></p>
-          <p class="compare-line">${escapeHTML(c.rule.reason)}</p>
-          <ol class="hits">${hitRows(cats, c.rule.categoryHits, c.rule.category)}</ol>
-          ${c.ai.error ? `<p class="compare-line">AI 오류 원문</p><code class="err-raw">${escapeHTML(c.ai.error)}</code>` : ""}
+          <summary>AI 판단 근거 · 개인정보 처리 상세보기</summary>
+          <div class="more-body">
+            <div class="info-ai">
+              <p class="foot-label">AI 분석용 문장 <span>외부 AI(Gemini)에 보낸 문장 · ${escapeHTML(c.maskedInfo)}</span></p>
+              <p class="masked-text">${highlightMasks(c.finalText)}</p>
+              ${c.nameKept ? `<p class="more-info"><b>주의</b> 이름일 수 있는 말 ${c.nameKept}곳을 제출자가 '이름 아님'으로 두고 보냈습니다.</p>` : ""}
+            </div>
+            <p class="compare-line">분석: ${isAI ? `Gemini · ${escapeHTML(c.ai.model || "")}` : `AI 없이 규칙으로 임시 분류 · ${escapeHTML(friendlyError(c.ai.error))}`}</p>
+            ${extra && extra.sensitive.review_needed ? `<p class="compare-line">민감사안 유형: ${extra.sensitive.types.map((t) => `<span class="hr-flag">${escapeHTML(t)}</span>`).join(" ")}</p>` : ""}
+            ${extra && extra.sensitive.basis ? `<p class="compare-line">민감사안 판단 근거: ${escapeHTML(extra.sensitive.basis)}</p>` : ""}
+            ${aiOwnerRaw && aiOwnerRaw !== rec ? `<p class="compare-line">AI 원래 추천 담당: ${escapeHTML(aiOwnerRaw)} → 민감사안이라 지정 담당으로 추천</p>` : ""}
+            <p class="compare-line">규칙 분류기 판정: <b>${escapeHTML(c.rule.category || NO_RESULT)}</b> · <b>${escapeHTML(c.rule.urgency || NO_RESULT)}</b> — ${escapeHTML(c.rule.reason)}</p>
+            <ol class="hits">${hitRows(cats, c.rule.categoryHits, c.rule.category)}</ol>
+            ${c.ai.error ? `<p class="compare-line">AI 오류 원문</p><code class="err-raw">${escapeHTML(c.ai.error)}</code>` : ""}
+            ${prot ? `
+            <p class="foot-label more-sub">민감사안 처리 원칙</p>
+            <ul class="care-list">
+              <li>AI는 사실관계나 위법 여부를 확정하지 않습니다. 표시는 '의심·검토 필요'라는 뜻입니다.</li>
+              <li>일반 담당 부서에 자동으로 배정하지 않습니다. 검토와 배정은 이 화면에서만 합니다.</li>
+              <li>실제 사건 조사와 보호 조치는 이 시스템에서 이루어지지 않습니다.</li>
+            </ul>` : ""}
+            <p class="foot-label more-sub">담당 부서에 넘길 정보 (미리보기)</p>
+            <p class="masked-text">${highlightMasks(c.finalText)}</p>
+            <ol class="actions">${handoff.map((a) => `<li>${escapeHTML(a.text)}${a.done ? " (완료)" : ""}</li>`).join("")}</ol>
+            <p class="reason-sub">담당 부서에는 AI 분석용 문장만 넘기고, 원문·제출자 정보·민감사안 유형은 넘기지 않는다는 가정입니다. (실습용: 실제로 전달되지 않음)</p>
+            <p class="foot-label more-sub">원문 열람에 대해</p>
+            <p class="reason-sub">이 화면의 원문은 가상 데이터이며 이 브라우저 메모리에만 있습니다. 로그인·접근권한·보호된 저장소가 없는 시뮬레이션이라 보호되고 있지 않습니다. 실제 운영에서는 원문을 보호된 저장소에 두고, 사건별 권한이 있는 담당자만 열람하며 열람 기록을 남겨야 합니다.</p>
+          </div>
         </details>
         ${c.history.length ? `
-        <p class="foot-label hr-hist-title">변경 기록</p>
-        <ol class="hr-history">${c.history.map((h) => `<li><span>${escapeHTML(h.at)}</span> ${escapeHTML(h.text)}</li>`).join("")}</ol>` : ""}
+        <details class="mini-disclosure">
+          <summary>변경 기록 (${c.history.length})</summary>
+          <ol class="hr-history">${c.history.map((h) => `<li><span>${escapeHTML(h.at)}</span> ${escapeHTML(h.text)}</li>`).join("")}</ol>
+        </details>` : ""}
       </div>`;
 
     box.querySelector("#hr-next").addEventListener("click", () => advance(c, "hr"));
@@ -1310,6 +1309,7 @@
     // 탭을 바꿀 때 HR 화면과 직원 안내(진행 상태 반영)를 다시 그린다
     $("#tab-hr").addEventListener("click", () => criteria && renderHR());
     $("#tab-dash").addEventListener("click", () => criteria && renderDash());
+    $("#reset-sim").addEventListener("click", () => criteria && resetSimulation());
     $("#tab-classify").addEventListener("click", () => lastCaseId && renderEmployeeResult(lastCaseId));
     try {
       [criteria, keywords] = await Promise.all([loadJSON("criteria.json"), loadJSON("keywords.json")]);
@@ -1324,7 +1324,7 @@
     try { routingCfg = await loadJSON("routing.json"); } catch (_) { routingCfg = null; }
     // 과제용 가상 사례를 HR 화면·대시보드에 미리 넣는다 (메모리에만, 새로 고치면 처음 상태)
     if (criteria && keywords) {
-      try { loadDemoCases(await loadJSON("demo_cases.json")); } catch (_) { /* 예시가 없어도 화면은 돈다 */ }
+      try { demoData = await loadJSON("demo_cases.json"); loadDemoCases(demoData); } catch (_) { demoData = null; /* 예시가 없어도 화면은 돈다 */ }
     }
 
     // 제출 유형 선택 — 화면 안내에만 쓴다 (AI로 보내지 않음)
