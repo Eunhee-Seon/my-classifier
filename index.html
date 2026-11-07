@@ -24,8 +24,9 @@
         <span class="wordmark-ko">익명 건의사항 분류기</span>
       </a>
       <nav class="tabs" role="tablist" aria-label="화면 선택">
-        <button role="tab" id="tab-classify" aria-controls="panel-classify" aria-selected="true">직원</button>
+        <button role="tab" id="tab-classify" aria-controls="panel-classify" aria-selected="true">직원 접수</button>
         <button role="tab" id="tab-hr" aria-controls="panel-hr" aria-selected="false" tabindex="-1">HR 검토</button>
+        <button role="tab" id="tab-dash" aria-controls="panel-dash" aria-selected="false" tabindex="-1">HR 대시보드</button>
         <button role="tab" id="tab-score" aria-controls="panel-score" aria-selected="false" tabindex="-1">채점</button>
       </nav>
     </div>
@@ -107,11 +108,11 @@
       <div class="page-head">
         <p class="kicker"><span>SIMULATION</span>HR 담당자 검토 화면</p>
         <h1>접수된 의견 검토</h1>
-        <p class="page-sub">AI 추천을 참고해 분류를 확정하고, 담당 부서와 후속 조치를 정합니다.</p>
+        <p class="page-sub">AI 최초 판정을 참고해 분류를 확정하고, 담당 부서를 배정하고, 후속 조치와 처리 상태를 관리합니다.</p>
       </div>
       <div class="sim-banner" role="note">
-        <strong>실습용 시뮬레이션입니다.</strong>
-        <span>로그인·권한 통제가 없는 연습 화면이며, 실제 HR 담당자에게 아무것도 전달되지 않습니다. 이번에 직원 화면에서 제출한 가상 의견만 이 브라우저 메모리에 있고, 새로 고치면 사라집니다.</span>
+        <strong>실습용 시뮬레이션입니다. 모든 접수·처리 데이터는 가상입니다.</strong>
+        <span>로그인·권한 통제가 없는 연습 화면이며, 실제 HR 담당자에게 아무것도 전달되지 않습니다. 예시 가상 사건(연습용 문장)과 이번에 직원 접수 화면에서 제출한 가상 의견이 이 브라우저 메모리에만 있고, 새로 고치면 처음 상태로 돌아갑니다. 서버나 브라우저 저장소에 저장하지 않습니다.</span>
       </div>
       <div class="board hr-board">
         <div class="col">
@@ -123,6 +124,29 @@
           <div id="hr-detail" class="verdict-panel"></div>
         </div>
       </div>
+      <details class="disclosure limits">
+        <summary>이 시뮬레이션의 한계</summary>
+        <ul>
+          <li>실제 운영에서는 별도의 인증, 권한 관리, 암호화, 접근 기록, 보호된 신고 절차가 필요합니다. 이 화면에는 그런 장치가 없습니다.</li>
+          <li>AI는 사실관계나 위법 여부를 확정하지 않으며, 민감사안 표시는 사람이 검토할 대상이라는 뜻입니다.</li>
+          <li>실제 사건 조사와 보호 조치는 이 시스템에서 이루어지지 않습니다.</li>
+          <li>자동 가림을 거쳐도 익명이 완전히 보장되지는 않습니다.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- HR 대시보드 (시뮬레이션) -->
+    <section id="panel-dash" role="tabpanel" aria-labelledby="tab-dash" class="panel" hidden>
+      <div class="page-head">
+        <p class="kicker"><span>SIMULATION</span>HR 대시보드</p>
+        <h1>접수 현황</h1>
+        <p class="page-sub">HR 검토 화면과 같은 가상 사건 데이터를 보여 줍니다. 한쪽에서 바꾸면 다른 쪽에도 바로 반영됩니다.</p>
+      </div>
+      <div class="sim-banner" role="note">
+        <strong>실습용 시뮬레이션입니다. 숫자는 지금 이 브라우저의 가상 사건에서 계산한 값입니다.</strong>
+        <span>로그인·권한 통제가 없는 연습 화면입니다. 실제 운영에서는 인증, 권한 관리, 암호화, 접근 기록, 보호된 신고 절차가 필요합니다. 새로 고치면 처음 상태로 돌아갑니다.</span>
+      </div>
+      <div id="dash" class="dash"></div>
     </section>
 
     <!-- 채점 -->

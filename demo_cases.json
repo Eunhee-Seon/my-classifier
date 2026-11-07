@@ -1,0 +1,424 @@
+{
+  "note": "과제용 가상 사례. 문장은 data/practice.json의 가상 문장이며, AI 결과는 배포된 서버의 확장 모드로 미리 받아 둔 실제 Gemini 응답이다. 실제 사람·회사·개인정보가 아니다.",
+  "analyzed_at": "2026-11-07 13:09",
+  "model": "gemini-3.5-flash-lite",
+  "cases": [
+    {
+      "source": "practice_027",
+      "type": "general",
+      "original": "3층 에어컨이 이틀째 고장나서 실내온도가 31도까지 올라갔어요. 노트북이 과열돼서 빌드 돌리다가 자꾸 꺼집니다. 빠른 수리 부탁드려요.",
+      "masked": "3층 에어컨이 이틀째 고장나서 실내온도가 31도까지 올라갔어요. 노트북이 과열돼서 빌드 돌리다가 자꾸 꺼집니다. 빠른 수리 부탁드려요.",
+      "ai": {
+        "ok": true,
+        "category": "근무환경",
+        "urgency": "높음",
+        "reason": "에어컨 고장으로 실내온도가 높아져 업무 수행에 직접적인 지장을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "기타 안전·권리 침해 의심"
+            ],
+            "basis": "업무 수행에 지장을 주는 물리적 환경 문제로 검토 필요"
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "총무·시설 담당자",
+          "actions": [
+            "3층 에어컨 고장 상태 확인",
+            "긴급 수리 업체 연락 및 조치",
+            "추가 과열 방지 대책 마련"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_058",
+      "type": "general",
+      "original": "창가쪽 자리 오후되면 햇빛때문에 40인치 모니터가 하나도 안보여요 블라인드 좀 달아주세요",
+      "masked": "창가쪽 자리 오후되면 햇빛때문에 40인치 모니터가 하나도 안보여요 블라인드 좀 달아주세요",
+      "ai": {
+        "ok": true,
+        "category": "근무환경",
+        "urgency": "보통",
+        "reason": "오후 햇빛으로 모니터가 보이지 않는 불편을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": false,
+            "types": [],
+            "basis": null
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "총무·시설 담당자",
+          "actions": [
+            "창가 자리 블라인드 설치 요청 확인",
+            "현장 실측 및 블라인드 시공 검토"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "확인 완료",
+        "owner": "총무·시설 담당자"
+      }
+    },
+    {
+      "source": "practice_006",
+      "type": "general",
+      "original": "시차출퇴근으로 10시 출근 7시 퇴근인데 요즘 6시 넘어서 회의가 잡히는 바람에 퇴근이 9시 10시로 계속 밀려요",
+      "masked": "시차출퇴근으로 10시 출근 7시 퇴근인데 요즘 6시 넘어서 회의가 잡히는 바람에 퇴근이 9시 10시로 계속 밀려요",
+      "ai": {
+        "ok": true,
+        "category": "인사제도",
+        "urgency": "보통",
+        "reason": "시차출퇴근 시간 이후 회의 진행으로 지속적인 초과 근무 발생을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": false,
+            "types": [],
+            "basis": null
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "인사제도·보상 담당자",
+          "actions": [
+            "시차출퇴근제 운영 현황 파악",
+            "해당 부서 회의 일정 조율 방식 점검"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "확인 완료"
+      }
+    },
+    {
+      "source": "practice_031",
+      "type": "general",
+      "original": "다음주에 새 KPI로 상반기 평가를 한다는데 아직 KPI 정의서도 못 받았어요. 뭘로 평가받는지도 모르고 평가 받게 생겼습니다. 이대로 연봉 반영되면 분쟁 날 것 같아요",
+      "masked": "다음주에 새 KPI로 상반기 평가를 한다는데 아직 KPI 정의서도 못 받았어요. 뭘로 평가받는지도 모르고 평가 받게 생겼습니다. 이대로 연봉 반영되면 분쟁 날 것 같아요",
+      "ai": {
+        "ok": true,
+        "category": "인사제도",
+        "urgency": "높음",
+        "reason": "평가 임박 시점까지 KPI 정의서가 공유되지 않아 분쟁 가능성을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": false,
+            "types": [],
+            "basis": null
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "인사제도·보상 담당자",
+          "actions": [
+            "상반기 KPI 정의서 배포 현황 확인",
+            "평가 일정 및 사전 고지 여부 점검",
+            "부서별 KPI 확정 및 안내 촉구"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_013",
+      "type": "general",
+      "original": "프로젝트 마감 이틀 남았는데 협업하는 팀에서 데이터를 안 넘겨주고 있습니다. 담당자도 연락이 안돼요. 이대로면 출시 일정 못 맞춥니다",
+      "masked": "프로젝트 마감 이틀 남았는데 협업하는 팀에서 데이터를 안 넘겨주고 있습니다. 담당자도 연락이 안돼요. 이대로면 출시 일정 못 맞춥니다",
+      "ai": {
+        "ok": true,
+        "category": "조직문화·협업",
+        "urgency": "높음",
+        "reason": "협업 부서의 데이터 지연 전달과 연락 두절로 마감 일정 차질을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "기타 안전·권리 침해 의심"
+            ],
+            "basis": "부서 간 협업 지연으로 인한 업무 차질 발생으로 검토 필요"
+          },
+          "needs_more_info": true,
+          "info_to_check": "연락이 닿지 않는 담당자의 부재 사유 및 대체 협업 창구 여부",
+          "owner_role": "조직문화 담당자",
+          "actions": [
+            "협업 부서 담당자 연락 시도",
+            "데이터 전달 일정 확인 및 조율",
+            "프로젝트 마감일 준수 지원"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "확인 완료",
+        "sensitive": "해당 없음",
+        "override": "팀 간 자료 전달 지연 문제로, 개인의 안전·권리 침해 정황은 보이지 않아 민감사안에서 제외함 (예시)"
+      }
+    },
+    {
+      "source": "practice_029",
+      "type": "general",
+      "original": "타운홀 분기마다 말고 매달 하면 좋겠어요",
+      "masked": "타운홀 분기마다 말고 매달 하면 좋겠어요",
+      "ai": {
+        "ok": true,
+        "category": "조직문화·협업",
+        "urgency": "낮음",
+        "reason": "분기별 타운홀 미팅을 매달 개최해 달라는 개선 의견임",
+        "extra": {
+          "sensitive": {
+            "review_needed": false,
+            "types": [],
+            "basis": null
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "조직문화 담당자",
+          "actions": [
+            "타운홀 미팅 주기 변경 검토",
+            "구성원 의견 조사 결과 반영 여부 확인"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "종결",
+        "owner": "조직문화 담당자",
+        "done": [
+          0,
+          1,
+          2
+        ],
+        "note": "월간 전사 회의 운영 방식과 함께 검토함 (예시)",
+        "result": "월간 전사 회의에 질의응답 시간을 늘리는 방안으로 반영했습니다. (가상 처리 결과)"
+      }
+    },
+    {
+      "source": "practice_035",
+      "type": "general",
+      "original": "식대 1만2천원으로는 회사 근처 점심값이 안 돼요. 인상 검토 부탁드립니다.",
+      "masked": "식대 1만2천원으로는 회사 근처 점심값이 안 돼요. 인상 검토 부탁드립니다.",
+      "ai": {
+        "ok": true,
+        "category": "복리후생",
+        "urgency": "보통",
+        "reason": "물가 대비 식대 지원금이 부족하여 인상을 건의함",
+        "extra": {
+          "sensitive": {
+            "review_needed": false,
+            "types": [],
+            "basis": null
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "HR 담당자",
+          "actions": [
+            "현재 식대 지원 기준 확인",
+            "물가 상승률 및 타사 수준 조사 검토"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "조치 중",
+        "owner": "복리후생 담당자",
+        "done": [
+          0
+        ],
+        "note": "식대 기준 비교 자료 요청 (예시)"
+      }
+    },
+    {
+      "source": "practice_007",
+      "type": "general",
+      "original": "어제 사내 카페테리아에서 점심 먹고 우리 팀 4명이 다 배탈났어요. 다른 팀도 그렇다는 얘기 있고 오늘 메뉴도 같은 업체예요",
+      "masked": "어제 사내 카페테리아에서 점심 먹고 우리 팀 4명이 다 배탈났어요. 다른 팀도 그렇다는 얘기 있고 오늘 메뉴도 같은 업체예요",
+      "ai": {
+        "ok": true,
+        "category": "복리후생",
+        "urgency": "높음",
+        "reason": "사내 카페테리아 이용 후 복수의 팀원이 집단 배탈 증상을 겪었다고 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "신체적 부상·안전사고 의심"
+            ],
+            "basis": "식음료 섭취로 인한 신체적 이상 증상 발생이 의심되어 검토 필요"
+          },
+          "needs_more_info": true,
+          "info_to_check": "증상을 겪은 인원의 구체적인 상태 및 동일 메뉴 섭취자 현황",
+          "owner_role": "안전관리 담당자",
+          "actions": [
+            "카페테리아 운영 업체 현황 파악",
+            "위생 상태 점검 및 식단 확인",
+            "추가 피해 발생 여부 모니터링"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_046",
+      "type": "general",
+      "original": "우리 그룹장님이 여성 팀원들한테만 회의 뒷정리나 간식 주문을 시킵니다. 남성 팀원한텐 한번도 안 시켜요. 차별 아닌가요",
+      "masked": "우리 그룹장님이 여성 팀원들한테만 회의 뒷정리나 간식 주문을 시킵니다. 남성 팀원한텐 한번도 안 시켜요. 차별 아닌가요",
+      "ai": {
+        "ok": true,
+        "category": "개인 고충·갈등",
+        "urgency": "높음",
+        "reason": "특정 성별에게만 업무 외 잡일을 차별적으로 지시한다고 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "차별 의심"
+            ],
+            "basis": "특정 성별에 대한 차별적 대우가 의심되어 사실관계 확인 필요"
+          },
+          "needs_more_info": true,
+          "info_to_check": "차별적 지시가 발생한 구체적인 정황 및 추가 피해자 존재 여부",
+          "owner_role": "지정된 고충처리 담당자",
+          "actions": [
+            "사실관계 확인을 위한 면담 진행",
+            "부서 내 업무 분장 및 지시 실태 파악",
+            "개선 조치 검토"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_012",
+      "type": "grievance",
+      "original": "○○팀 박가상 팀장이 기획 리뷰 중에 제 문서를 보더니 '머리는 장식이냐'고 소리쳤습니다. 이번이 세번째입니다.",
+      "masked": "○○팀 [이름] 팀장이 기획 리뷰 중에 제 문서를 보더니 '머리는 장식이냐'고 소리쳤습니다. 이번이 세번째입니다.",
+      "ai": {
+        "ok": true,
+        "category": "개인 고충·갈등",
+        "urgency": "높음",
+        "reason": "팀장으로부터 기획 리뷰 중 모욕적인 폭언을 반복적으로 들었다고 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "직장 내 괴롭힘 의심",
+              "폭언·협박·위협 의심"
+            ],
+            "basis": "반복적인 폭언 및 모욕적 언행이 의심되어 사실관계 확인 필요"
+          },
+          "needs_more_info": true,
+          "info_to_check": "발언 당시의 구체적인 상황과 목격자 존재 여부",
+          "owner_role": "지정된 고충처리 담당자",
+          "actions": [
+            "제출자 면담을 통한 구체적 내용 청취",
+            "신고 대상자 입장 확인",
+            "사건 관련 사실관계 조사"
+          ]
+        },
+        "error": null
+      },
+      "demo_hr": {
+        "status": "확인 완료",
+        "owner": "지정된 고충처리 담당자",
+        "note": "권한 있는 담당자만 열람하도록 표시 (예시)"
+      }
+    },
+    {
+      "source": "practice_050",
+      "type": "grievance",
+      "original": "같은 팀 시니어 개발자가 코드리뷰 때마다 '너 같은 건 어디 가도 못 버틴다', '그만둘거면 빨리 그만둬라' 같은 말을 합니다. 요즘 잠도 못 자고 출근하는게 두렵습니다. 정신과 상담도 받기 시작했어요.",
+      "masked": "같은 팀 시니어 개발자가 코드리뷰 때마다 '너 같은 건 어디 가도 못 버틴다', '그만둘거면 빨리 그만둬라' 같은 말을 합니다. 요즘 잠도 못 자고 출근하는게 두렵습니다. 정신과 상담도 받기 시작했어요.",
+      "ai": {
+        "ok": true,
+        "category": "개인 고충·갈등",
+        "urgency": "높음",
+        "reason": "특정 직원의 폭언과 모욕적인 언행으로 인해 심각한 정신적 피해를 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "직장 내 괴롭힘 의심",
+              "폭언·협박·위협 의심"
+            ],
+            "basis": "직장 내 괴롭힘 및 폭언·협박·위협 의심으로 사실관계 확인 필요"
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "지정된 고충처리 담당자",
+          "actions": [
+            "제출자의 건강 상태 및 피해 상황 면담 확인 필요",
+            "관련 발언에 대한 사실관계 파악",
+            "보호 조치 검토"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_057",
+      "type": "grievance",
+      "original": "지난주 신고한 괴롭힘 건 가해자랑 아직도 같은 팀이고, 신고한 걸 알게 된 뒤로 보복성으로 업무를 몰아주고 있어요. 제발 빨리 확인해주세요",
+      "masked": "지난주 신고한 괴롭힘 건 가해자랑 아직도 같은 팀이고, 신고한 걸 알게 된 뒤로 보복성으로 업무를 몰아주고 있어요. 제발 빨리 확인해주세요",
+      "ai": {
+        "ok": true,
+        "category": "개인 고충·갈등",
+        "urgency": "높음",
+        "reason": "신고 이후 보복성 업무 배정과 분리 조치가 되지 않은 상황을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "직장 내 괴롭힘 의심",
+              "보복성 인사조치 의심"
+            ],
+            "basis": "보복성 인사조치 및 직장 내 괴롭힘 의심으로 검토 필요"
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "지정된 고충처리 담당자",
+          "actions": [
+            "신속한 분리 조치 여부 확인",
+            "보복성 업무 배정 관련 사실관계 파악",
+            "추가 피해 방지 조치 검토"
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "source": "practice_060",
+      "type": "grievance",
+      "original": "제 팀장이 다른 사람들 앞에서 제 외모 얘기를 자주 하는데 웃어넘기기 힘들어요. 어떻게 대처해야 할지 상담 가능할까요?",
+      "masked": "제 팀장이 다른 사람들 앞에서 제 외모 얘기를 자주 하는데 웃어넘기기 힘들어요. 어떻게 대처해야 할지 상담 가능할까요?",
+      "ai": {
+        "ok": true,
+        "category": "개인 고충·갈등",
+        "urgency": "높음",
+        "reason": "팀장의 외모 관련 발언으로 인한 고충과 상담 필요성을 호소함",
+        "extra": {
+          "sensitive": {
+            "review_needed": true,
+            "types": [
+              "직장 내 괴롭힘 의심",
+              "성희롱·원치 않는 신체접촉 의심"
+            ],
+            "basis": "성희롱·원치 않는 신체접촉 의심 또는 직장 내 괴롭힘 의심으로 사실관계 확인 필요"
+          },
+          "needs_more_info": false,
+          "info_to_check": null,
+          "owner_role": "지정된 고충처리 담당자",
+          "actions": [
+            "제출자 면담을 통한 구체적 발언 내용 확인",
+            "성희롱 또는 괴롭힘 해당 여부 검토",
+            "고충 상담 및 지원 방안 안내"
+          ]
+        },
+        "error": null
+      }
+    }
+  ],
+  "demo_hr_note": "demo_hr는 HR 담당자가 일부 건을 이미 처리한 것처럼 꾸민 가상 초기 상태다. 표시 목적이며 실제 처리 기록이 아니다."
+}
