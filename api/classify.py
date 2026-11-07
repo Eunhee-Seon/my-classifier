@@ -23,6 +23,9 @@ from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, Thread
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CRITERIA_PATH = os.path.join(ROOT, "criteria.json")
+SENSITIVE_PATH = os.path.join(ROOT, "sensitive.json")
+ROUTING_PATH = os.path.join(ROOT, "routing.json")
+MAX_EXTRA_TEXT = 200
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
 TIMEOUT_SECONDS = 60
 MAX_ITEMS = 10
@@ -90,6 +93,79 @@ def response_schema(categories, urgencies):
             }
         },
         "required": ["results"],
+    }
+
+
+# ---------------------------------------------------------------- 확장 모드 (분류 탭 전용)
+# 채점(mode 없음)은 위의 지시문·응답 형식을 그대로 쓴다. 아래는 mode: "full"일 때만 더해진다.
+
+def load_json(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def build_full_system_prompt(criteria, sensitive, routing):
+    extra = {
+        "민감사안 유형": sensitive["types"],
+        "표현 규칙": sensitive["wording_rules"],
+        "긴급도 판단 질문": sensitive["urgency_checks"],
+        "검토 담당 역할": routing["roles"],
+        "칸별 기본 담당(참고)": routing["category_default_role"],
+        "민감사안일 때 담당(참고)": routing["sensitive_role"],
+        "후속 조치 최대 개수": routing["max_actions"],
+    }
+    return (
+        build_system_prompt(criteria)
+        + "\n\n[추가로 판단할 것 — 분류 칸·긴급도와 별개의 참고 정보]\n"
+        "- sensitive_review: 아래 민감사안 유형 중 하나라도 의심되면 true. 기존 분류 칸을 바꾸지 않는다.\n"
+        "- sensitive_types: 의심되는 유형 이름을 목록에서 그대로 고른다. 없으면 빈 목록.\n"
+        "- sensitive_basis: 왜 검토가 필요한지 한 문장. '의심', '검토 필요', '사실관계 확인 필요'로 쓰고, 실제로 일어났다고 확정하지 않는다.\n"
+        "- needs_more_info / info_to_check: 긴급도를 판단하기에 정보가 부족하면 true와 확인할 내용을 쓴다.\n"
+        "- owner_role: 검토 담당 역할 목록에서 하나를 고른다. 실제 사람 이름은 쓰지 않는다.\n"
+        "- actions: 담당자가 먼저 확인할 일을 최대 3개, 짧은 문장으로 쓴다. 법적 판단(괴롭힘·성희롱·산업재해 해당 여부 등)을 확정하지 않는다.\n"
+        "- 이 정보는 HR 담당자가 검토하기 위한 참고이며, 자동으로 배정·조치되지 않는다.\n\n"
+        + json.dumps(extra, ensure_ascii=False, indent=2)
+    )
+
+
+def full_response_schema(categories, urgencies, types, roles):
+    base = response_schema(categories, urgencies)
+    props = base["properties"]["results"]["items"]["properties"]
+    props.update({
+        "sensitive_review": {"type": "BOOLEAN"},
+        "sensitive_types": {"type": "ARRAY", "items": {"type": "STRING", "enum": types}},
+        "sensitive_basis": {"type": "STRING"},
+        "needs_more_info": {"type": "BOOLEAN"},
+        "info_to_check": {"type": "STRING"},
+        "owner_role": {"type": "STRING", "enum": roles},
+        "actions": {"type": "ARRAY", "items": {"type": "STRING"}},
+    })
+    base["properties"]["results"]["items"]["required"] += ["sensitive_review", "needs_more_info", "owner_role", "actions"]
+    return base
+
+
+def validate_extra(r, types, roles, max_actions):
+    """확장 항목을 확인한다. 틀리면 None(화면에서 '확인 불가')으로 두고, 칸·긴급도 결과는 살린다."""
+    def short(s):
+        return " ".join(str(s).split())[:MAX_EXTRA_TEXT] if isinstance(s, str) and s.strip() else None
+    review = r.get("sensitive_review")
+    stypes = r.get("sensitive_types") or []
+    role = r.get("owner_role")
+    actions = r.get("actions")
+    if not isinstance(review, bool) or not isinstance(stypes, list) or any(t not in types for t in stypes):
+        return None
+    if role not in roles or not isinstance(actions, list) or not 1 <= len(actions) <= max_actions:
+        return None
+    actions = [short(a) for a in actions]
+    if any(a is None for a in actions):
+        return None
+    more = r.get("needs_more_info") is True
+    return {
+        "sensitive": {"review_needed": review, "types": stypes if review else [], "basis": short(r.get("sensitive_basis")) if review else None},
+        "needs_more_info": more,
+        "info_to_check": short(r.get("info_to_check")) if more else None,
+        "owner_role": role,
+        "actions": actions,
     }
 
 
@@ -182,6 +258,35 @@ def call_gemini(model, api_key, system_prompt, user_prompt, schema):
         raise ClassifyError("Gemini 응답이 약속한 JSON 형식이 아닙니다.", 502)
 
 
+# ---------------------------------------------------------------- 서버 재검사 (직접 식별정보)
+# 브라우저의 mask.js와 같은 기준이다. 남아 있으면 그 문장은 Gemini에 보내지 않는다.
+# 이 검사도 모든 개인정보를 찾지는 못한다 — 두 번째 안전망일 뿐 익명을 보장하지 않는다.
+
+_SURNAMES = "김이박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노하곽성차주우구민진나지엄채원천방공현함변염여추도소석선설마길연위표명기반왕금옥육인맹제모탁국어은편용"
+_NOT_NAMES = {"우리", "이번", "저희", "다음", "그냥", "이분", "전체", "정말", "같은", "이런", "그런", "저런",
+              "모든", "다른", "제가", "이제", "주말", "오늘", "어제", "내일", "신규", "기존", "전사", "해당"}
+_ID_PATTERNS = [
+    ("이메일", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")),
+    ("전화번호", re.compile(r"(?<!\d)0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}(?!\d)")),
+    ("전화번호", re.compile(r"내선\s*\d{3,4}")),
+    ("사번", re.compile(r"사번\s*[:：]?\s*[A-Za-z0-9-]+")),
+]
+_NAME = re.compile(r"(?<![가-힣])([" + _SURNAMES + r"])([가-힣]{1,2})(\s?)(님|씨|팀장|그룹장|매니저|리더|대표)")
+
+
+def find_identifiers(text):
+    """남아 있는 직접 식별정보의 종류와 개수만 돌려준다 (값 자체는 돌려주지 않는다)."""
+    counts = {}
+    for label, pat in _ID_PATTERNS:
+        n = len(pat.findall(text))
+        if n:
+            counts[label] = counts.get(label, 0) + n
+    n = sum(1 for m in _NAME.finditer(text) if (m.group(1) + m.group(2)) not in _NOT_NAMES)
+    if n:
+        counts["이름"] = counts.get("이름", 0) + n
+    return counts
+
+
 # ---------------------------------------------------------------- 검증
 
 def validate_request(payload):
@@ -244,19 +349,53 @@ def process(body_bytes):
         except (UnicodeDecodeError, json.JSONDecodeError):
             raise ClassifyError("요청 본문이 JSON이 아닙니다.", 400)
         items = validate_request(payload)
+        mode = payload.get("mode") or "score"
+        if mode not in ("score", "full"):
+            raise ClassifyError('mode는 "score" 또는 "full"이어야 합니다.', 400)
         api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
         if not api_key:
             raise ClassifyError("서버에 GEMINI_API_KEY가 설정되지 않았습니다.", 500)
-        criteria = load_criteria()
-        categories, urgencies = allowed_values(criteria)
-        ai_json = call_gemini(
-            model, api_key,
-            build_system_prompt(criteria),
-            build_user_prompt(items),
-            response_schema(categories, urgencies),
-        )
-        results = validate_results(items, ai_json, categories, urgencies)
-        return 200, {"ok": True, "model": model, "results": results}
+        # 직접 식별정보가 남은 문장은 Gemini에 보내지 않는다 (그 문장만 막고 나머지는 보낸다)
+        blocked = {}
+        for it in items:
+            found = find_identifiers(it["text"])
+            if found:
+                kinds = ", ".join(f"{k} {v}곳" for k, v in found.items())
+                blocked[it["id"]] = {
+                    "id": it["id"], "ok": False, "blocked": True,
+                    "error": f"개인정보로 보이는 내용({kinds})이 남아 있어 AI로 보내지 않았습니다. 해당 부분을 지우거나 고친 뒤 다시 시도해 주세요.",
+                }
+        send = [it for it in items if it["id"] not in blocked]
+        results_by_id = dict(blocked)
+        if send:
+            criteria = load_criteria()
+            categories, urgencies = allowed_values(criteria)
+            if mode == "score":  # 채점·기본: 지금까지와 똑같은 지시문·응답 형식
+                ai_json = call_gemini(
+                    model, api_key,
+                    build_system_prompt(criteria),
+                    build_user_prompt(send),
+                    response_schema(categories, urgencies),
+                )
+                for r in validate_results(send, ai_json, categories, urgencies):
+                    results_by_id[r["id"]] = r
+            else:  # 확장 모드: 민감사안·검토 담당·후속 조치를 함께 받는다
+                sensitive, routing = load_json(SENSITIVE_PATH), load_json(ROUTING_PATH)
+                types = [t["name"] for t in sensitive["types"]]
+                roles = routing["roles"]
+                ai_json = call_gemini(
+                    model, api_key,
+                    build_full_system_prompt(criteria, sensitive, routing),
+                    build_user_prompt(send),
+                    full_response_schema(categories, urgencies, types, roles),
+                )
+                raw_by_id = {str(r.get("id")): r for r in ai_json.get("results", []) if isinstance(r, dict)}
+                for r in validate_results(send, ai_json, categories, urgencies):
+                    if r["ok"]:
+                        r["extra"] = validate_extra(raw_by_id.get(r["id"], {}), types, roles, routing["max_actions"])
+                    results_by_id[r["id"]] = r
+        results = [results_by_id[it["id"]] for it in items]
+        return 200, {"ok": True, "model": model, "mode": mode, "results": results}
     except ClassifyError as e:
         return e.status, {"ok": False, "model": model, "error": str(e)}
     except Exception as e:  # 예상하지 못한 오류도 이유만 돌려준다 (키는 포함되지 않음)
