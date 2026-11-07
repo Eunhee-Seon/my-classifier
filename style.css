@@ -487,11 +487,51 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
 .act.done input[type="text"] { color: var(--muted); text-decoration: line-through; background: var(--surface-2); }
 .limits ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 
+
+/* 전송 전 확인 (개선) */
+.pv-purpose { margin: 0 0 12px; font-size: 14px; color: var(--ink-2); }
+.pv-purpose b { color: var(--ink); }
+.pv-grievance { margin-bottom: 14px; }
+.pv-found { margin-bottom: 10px; }
+.pv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.chip { font-size: 12px; font-weight: 700; border-radius: 3px; padding: 2px 8px; }
+.chip-auto { color: var(--green); background: var(--green-tint); }
+.chip-risk { color: var(--amber); background: var(--surface-2); border: 1px solid var(--line-strong); }
+.pv-clear { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; padding: 12px 16px; border-left: 4px solid var(--green); background: var(--green-tint); font-size: 14px; color: var(--ink-2); }
+.pv-clear strong { color: var(--ink); }
+.pv-clear span { font-size: 13px; color: var(--muted); }
+.pv-risks + .pv-label, .pv-list + .pv-label, .pv-clear + .pv-label { margin-top: 14px; }
+.pv-stop { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 12px 14px; border-left: 4px solid var(--red); background: var(--red-tint); font-size: 14px; color: var(--ink-2); }
+.pv-stop strong { color: var(--red-ink); }
+.pv-stop-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px; }
+.check-line { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.check-line input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--green); }
+.check-line.warn { padding: 10px 12px; border-left: 4px solid var(--amber); background: var(--surface-2); }
+
+/* HR 업무 단계 */
+.rv-wait { color: var(--amber); background: var(--surface-2); border: 1px solid var(--line-strong); }
+.stepper { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; padding: 0; }
+.stepper li { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; font-size: 13px; font-weight: 700; color: var(--faint); background: var(--surface-2); border-radius: 3px; }
+.stepper li span { display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 11px; font-weight: 900; border-radius: 50%; background: var(--line); color: var(--muted); }
+.stepper li.past { color: var(--green); }
+.stepper li.past span { background: var(--green); color: #fff; }
+.stepper li.now { color: #fff; background: var(--ink); }
+.stepper li.now span { background: var(--red); color: #fff; }
+.summary-box { background: var(--green-tint); }
+.info-ai { border-left: 4px solid var(--green); }
+.info-hr { border-left: 4px solid var(--ink); }
+.lock-hint { margin: -4px 0 10px; font-size: 13px; color: var(--muted); }
+.stage-on { box-shadow: inset 4px 0 0 var(--red); }
+.hr-form select:disabled, .hr-form textarea:disabled, .act input:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.assign-box { display: flex; flex-direction: column; gap: 2px; }
+.assign-box .foot-label { margin: 0; }
+.assign-state { margin: 4px 0 0; }
+
 /* 대시보드 */
-.dash-metrics { grid-template-columns: repeat(3, 1fr); }
-.dash-metrics .metric:nth-child(3n + 1) { border-left: 0; }
-.dash-metrics .metric:nth-child(n + 4) { border-top: 1px solid rgba(255, 255, 255, 0.12); }
-.dash-metrics .metric-value { font-size: 44px; }
+.dash-metrics { grid-template-columns: repeat(4, 1fr); }
+.dash-metrics .metric:nth-child(4n + 1) { border-left: 0; }
+.dash-metrics .metric:nth-child(n + 5) { border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.dash-metrics .metric-value { font-size: 40px; }
 .dash-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 .dash-two .matrix-wrap { margin-top: 0; }
 .dash-table td { font-weight: 700; color: var(--ink); }
