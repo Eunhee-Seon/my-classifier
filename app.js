@@ -166,14 +166,13 @@
     return aiOwner || defaultRouting(c.hr.category || c.ai.category, c.type).owner;
   }
 
-  function createCase({ type, original, finalText, maskedInfo, nameKept, ai, rule, demo }) {
+  function createCase({ type, original, finalText, maskedInfo, nameKept, ai, rule }) {
     const n = cases.length + 1;
     const x = ai.source === "ai" ? ai.extra : null;
     const actions = (x ? x.actions : defaultRouting(ai.category, type).actions).slice(0, 3);
     const c = {
       id: `VD-${String(n).padStart(3, "0")}`,
-      createdAt: demo ? "예시 데이터" : new Date().toLocaleString("ko-KR"),
-      demo: !!demo,
+      createdAt: new Date().toLocaleString("ko-KR"),
       type, original, finalText, maskedInfo, nameKept, ai, rule,
       aiActions: actions.slice(), // AI(또는 기본값)가 처음 낸 후속 조치 — 고치지 않는다
       showSummary: false,
@@ -194,30 +193,19 @@
       },
       history: [],
     };
-    if (demo) {
-      Object.assign(c.hr, {
-        status: demo.status || c.hr.status, sensitive: demo.sensitive || c.hr.sensitive,
-        note: demo.note || "", override: demo.override || "", result: demo.result || "",
-        resultChecked: !!demo.result_checked,
-      });
-      if (demo.owner) Object.assign(c.hr, { owner: demo.owner, ownerDraft: demo.owner, assigned: !!demo.assigned });
-      (demo.done || []).forEach((i) => c.hr.actions[i] && c.hr.actions[i].text && (c.hr.actions[i].done = true));
-      c.history.push({ at: "예시", text: "예시 초기 상태 (가상 처리 기록)" });
-    }
     cases.push(c);
     return c;
   }
 
-  // 시뮬레이션 초기화: 이 브라우저 메모리의 가상 사건만 처음(demo_cases.json) 상태로 되돌린다.
-  // 파일·서버·분류 기준·채점 데이터는 건드리지 않는다. demo_cases.json은 처음 읽은 내용을 그대로 다시 쓴다.
-  let demoData = null;
+  // 시뮬레이션 초기화: 이 브라우저 메모리의 가상 접수 목록을 모두 비우고 0건부터 다시 시작한다.
+  // 파일·서버·분류 기준·채점 데이터는 건드리지 않는다. 접수번호도 VD-001부터 다시 붙는다.
   function resetSimulation() {
     const ok = window.confirm([
-      "시뮬레이션을 초기 가상 데이터 상태로 되돌릴까요?",
+      "가상 접수 목록을 모두 비우고 0건부터 다시 시작할까요?",
       "",
-      "· 이번에 제출한 가상 의견이 목록에서 사라집니다.",
-      "· 처리 상태, 담당 부서, 검토 의견, 후속 조치 체크가 처음 상태로 돌아갑니다.",
-      "· 이 브라우저의 시뮬레이션만 바뀌며, 파일이나 서버 데이터는 삭제되지 않습니다.",
+      "· 지금까지 분석한 가상 의견이 목록에서 모두 사라집니다.",
+      "· 처리 상태, 담당 부서, 검토 의견, 후속 조치 체크도 함께 사라집니다.",
+      "· 이 브라우저의 시뮬레이션만 바뀌며, 파일·서버·채점 데이터는 삭제되지 않습니다.",
     ].join(String.fromCharCode(10)));
     if (!ok) return;
     cases.length = 0;
@@ -225,28 +213,14 @@
     lastCaseId = null;
     flash = null;
     Object.keys(dashFilter).forEach((k) => (dashFilter[k] = ""));
-    if (demoData) loadDemoCases(demoData);
     renderVerdict(null); // 직원 화면의 지난 결과도 지운다 (지워진 가상 사건을 가리키지 않게)
     refreshViews();
     const note = $("#reset-note");
     if (note) {
-      note.textContent = `초기 가상 데이터 ${cases.length}건으로 되돌렸습니다.`;
+      note.textContent = "가상 접수 목록을 비웠습니다. 0건부터 다시 시작합니다.";
       note.hidden = false;
       setTimeout(() => (note.hidden = true), 4000);
     }
-  }
-
-  // 과제용 가상 사례: demo_cases.json (practice.json의 가상 문장 + 미리 받아 둔 실제 Gemini 응답)
-  function loadDemoCases(d) {
-    (d.cases || []).forEach((dc) => {
-      const r = Rules.classify(dc.masked, criteria, keywords);
-      const rule = { category: r.category, urgency: r.urgency, reason: r.reason, categoryHits: r.categoryHits };
-      const ok = dc.ai && dc.ai.ok;
-      const ai = ok
-        ? { source: "ai", model: `${d.model} · ${d.analyzed_at} 미리 분석`, category: dc.ai.category, urgency: dc.ai.urgency, reason: dc.ai.reason, extra: dc.ai.extra || null, error: null }
-        : { source: "rule", model: null, category: r.category, urgency: r.urgency, reason: r.reason, extra: null, error: (dc.ai && dc.ai.error) || "예시 분석 없음" };
-      createCase({ type: dc.type, original: dc.original, finalText: dc.masked, maskedInfo: "예시 문장 · 자동 가림 적용", nameKept: 0, ai, rule, demo: dc.demo_hr || {} });
-    });
   }
 
   // ---------- 사건 바꾸기: 두 화면이 모두 아래 함수만 쓴다 ----------
@@ -441,8 +415,8 @@
     const waiting = cases.filter((c) => c.hr.status === "접수").length;
     $("#hr-count").textContent = cases.length ? `${cases.length}건 · 접수 상태 ${waiting}건` : "";
     if (!cases.length) {
-      list.innerHTML = `<li class="hr-empty">아직 등록된 가상 의견이 없습니다. 직원 접수 화면에서 가상 의견을 제출해 보세요.</li>`;
-      $("#hr-detail").innerHTML = `<div class="verdict-top"><p class="idle-msg">검토할 의견이 없습니다.</p></div>`;
+      list.innerHTML = `<li class="hr-empty">아직 접수된 가상 의견이 없습니다. 직원 화면에서 의견을 분석해 보세요.</li>`;
+      $("#hr-detail").innerHTML = `<div class="verdict-top"><p class="idle-msg">검토할 의견이 없습니다.</p><p class="reason-sub">아직 접수된 가상 의견이 없습니다. 직원 화면에서 의견을 분석해 보세요.</p></div>`;
       $("#hr-meta").textContent = "";
       return;
     }
@@ -450,7 +424,7 @@
     list.innerHTML = cases.slice().reverse().map((c) => `
       <li>
         <button type="button" class="hr-item ${c.id === currentCaseId ? "on" : ""} ${c.hr.status === "접수" ? "unread" : ""}" data-case="${escapeHTML(c.id)}">
-          <span class="hr-item-top"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span>${c.demo ? `<span class="demo-tag">예시</span>` : ""}<span class="hr-item-st">${statusBadge(c.hr.status)}</span></span>
+          <span class="hr-item-top"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span><span class="hr-item-st">${statusBadge(c.hr.status)}</span></span>
           <span class="hr-item-text">${escapeHTML(c.finalText)}</span>
           <span class="hr-item-tags">
             <span>${escapeHTML(c.hr.category || "칸 미정")}</span>
@@ -546,7 +520,7 @@
     box.innerHTML = `
       <section class="hr-sec hr-head">
         <div class="hr-head-main">
-          <p class="hr-case-id"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span>${c.demo ? `<span class="demo-tag">예시</span>` : ""}</p>
+          <p class="hr-case-id"><b>${escapeHTML(c.id)}</b><span>${escapeHTML(TYPE_LABEL[c.type] || "")}</span></p>
           ${stepper(c)}
           ${prot ? `<p class="sens-pill">민감사안 · 지정 고충처리 담당자 우선 검토 필요</p>` : ""}
         </div>
@@ -733,7 +707,7 @@
               const canOwner = s === "검토 중" && !prot;
               const canStatus = nx && !(prot && s !== "접수") && s !== "처리 중";
               return `<tr class="${s === "접수" ? "unread" : ""}">
-                <td><button type="button" class="case-link" data-open="${escapeHTML(c.id)}">${escapeHTML(c.id)}</button>${c.demo ? ` <span class="demo-tag">예시</span>` : ""}</td>
+                <td><button type="button" class="case-link" data-open="${escapeHTML(c.id)}">${escapeHTML(c.id)}</button></td>
                 <td>${escapeHTML(TYPE_LABEL[c.type] || "")}</td>
                 <td>${escapeHTML(c.hr.category || "미정")}</td>
                 <td><span class="u-text ${URG_CLASS[c.hr.urgency] || ""}">${escapeHTML(c.hr.urgency || "미정")}</span></td>
@@ -746,7 +720,7 @@
                   ? `<select data-dash-status="${escapeHTML(c.id)}" aria-label="${escapeHTML(c.id)} 처리 상태">${options([s, nx], s)}</select>`
                   : `${statusBadge(s)}${nx ? `<span class="lock-note">${s === "처리 중" ? "완료는 HR 검토에서 결과 확인 후" : "HR 검토에서 진행"}</span>` : ""}`}</td>
               </tr>`;
-            }).join("") : `<tr><td colspan="8" class="empty-row">조건에 맞는 접수 건이 없습니다.</td></tr>`}
+            }).join("") : `<tr><td colspan="8" class="empty-row">${total ? "조건에 맞는 접수 건이 없습니다." : "아직 접수된 가상 의견이 없습니다. 직원 화면에서 의견을 분석해 보세요."}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1322,10 +1296,6 @@
     }
     try { sensitiveCfg = await loadJSON("sensitive.json"); } catch (_) { sensitiveCfg = null; }
     try { routingCfg = await loadJSON("routing.json"); } catch (_) { routingCfg = null; }
-    // 과제용 가상 사례를 HR 화면·대시보드에 미리 넣는다 (메모리에만, 새로 고치면 처음 상태)
-    if (criteria && keywords) {
-      try { demoData = await loadJSON("demo_cases.json"); loadDemoCases(demoData); } catch (_) { demoData = null; /* 예시가 없어도 화면은 돈다 */ }
-    }
 
     // 제출 유형 선택 — 화면 안내에만 쓴다 (AI로 보내지 않음)
     document.querySelectorAll(".type-toggle button").forEach((b) =>
