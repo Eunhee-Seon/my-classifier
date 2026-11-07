@@ -492,6 +492,7 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
 .pv-purpose { margin: 0 0 12px; font-size: 14px; color: var(--ink-2); }
 .pv-purpose b { color: var(--ink); }
 .pv-grievance { margin-bottom: 14px; }
+.pv-next { margin: 6px 0 0 26px; font-size: 13px; font-weight: 700; color: var(--red-ink); }
 .pv-found { margin-bottom: 10px; }
 .pv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .chip { font-size: 12px; font-weight: 700; border-radius: 3px; padding: 2px 8px; }

@@ -825,9 +825,7 @@
       <p class="pv-purpose">이 단계에서는 <b>외부 AI(Gemini)에 보낼 문장</b>을 확인합니다. 원래 쓴 문장(원문)은 AI로 보내지 않습니다.</p>
       ${grievance ? `
       <div class="type-notice pv-grievance">
-        <strong>개인 고충·신고는 더 신중하게 확인해 주세요.</strong>
-        <span>신고 대상자·목격자의 이름, 사건 일시·장소, 팀 이름처럼 사람을 좁힐 수 있는 정보는 꼭 필요한 만큼만 남겨 주세요. 무슨 일이 있었는지(사건의 핵심)는 남겨도 됩니다.</span>
-        <span>이 사이트는 실제 신고 접수처가 아닙니다. 실제 고충은 회사의 공식 고충처리 창구를 이용하세요.</span>
+        <span>AI에 전달할 문장을 확인해 주세요. 이름이 가려져 있어도 직책, 관계, 특정 사건의 내용으로 개인이 식별될 수 있습니다.</span>
       </div>` : ""}
       ${detected ? `
       <div class="pv-found">
@@ -857,7 +855,7 @@
       </div>` : ""}` : `
       <div class="pv-clear">
         <strong>자동 탐지된 개인정보는 없습니다. 내용을 확인한 후 AI 분석을 진행해 주세요.</strong>
-        <span>자동 탐지가 모든 개인정보를 찾아내지는 못합니다. 이름·연락처처럼 사람을 알아볼 수 있는 내용이 없는지 한 번 더 봐 주세요.</span>
+        ${grievance ? "" : `<span>자동 탐지가 모든 개인정보를 찾아내지는 못합니다. 이름·연락처처럼 사람을 알아볼 수 있는 내용이 없는지 한 번 더 봐 주세요.</span>`}
       </div>`}
       <label for="final-text" class="pv-label">AI에 보낼 문장 <span>직접 고칠 수 있습니다 · 보내기 전에 한 번 더 검사합니다</span></label>
       <textarea id="final-text" rows="3">${escapeHTML(finalText)}</textarea>
@@ -872,7 +870,8 @@
           ${p.names.length && !Object.keys(p.counts).length ? `<button type="button" id="pv-notname" class="btn-link">이름이 아닙니다 · 그대로 두기</button>` : ""}
         </span>
       </div>` : ""}
-      ${grievance ? `<label class="check-line"><input type="checkbox" id="pv-confirm" ${pv.confirmed ? "checked" : ""}> AI에 보낼 문장을 확인했습니다. 사람을 알아볼 수 있는 정보를 꼭 필요한 만큼만 남겼습니다.</label>` : ""}
+      ${grievance ? `<label class="check-line"><input type="checkbox" id="pv-confirm" ${pv.confirmed ? "checked" : ""}> AI에 보낼 문장을 확인했습니다.</label>
+      ${pv.confirmed ? "" : `<p class="pv-next">체크한 뒤 'AI로 분석'을 눌러 주세요.</p>`}` : ""}
       <div class="pv-actions">
         <button type="button" id="pv-cancel" class="btn-secondary">다시 쓰기</button>
         <button type="button" id="analyze-btn" class="btn-primary" ${grievance && !pv.confirmed ? "disabled" : ""}>AI로 분석</button>
