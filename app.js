@@ -328,8 +328,8 @@
       out.className = "verdict-panel idle";
       out.innerHTML = `
         <div class="verdict-top">
-          <p class="idle-msg">${state && state.loading ? "AI가 의견을 분석하고 있습니다…" : "분석 결과가 여기에 나타납니다."}</p>
-          <p class="reason-sub">${state && state.loading ? "잠시만 기다려 주세요." : "의견을 작성하고 'AI로 의견 분석하기'를 눌러 주세요."}</p>
+          <p class="idle-msg">${state && state.loading ? "의견을 확인하고 있습니다…" : "의견을 남기면 이곳에 완료 안내가 표시됩니다."}</p>
+          <p class="reason-sub">${state && state.loading ? "잠시만 기다려 주세요." : "의견을 작성한 뒤 '의견 남기기'를 눌러 주세요."}</p>
         </div>`;
       return;
     }
@@ -348,42 +348,22 @@
     renderEmployeeResult(state.caseId);
   }
 
-  // 직원에게는 분류·긴급도·짧은 이유만 보여 준다. 모델명·규칙 로직·담당 배정·HR Action은 HR 화면에만 둔다.
+  // 직원 화면에는 분류·긴급도·담당 부서를 공개하지 않는다.
+  // 모든 AI/규칙 판정은 사건 데이터에 남아 HR 검토·대시보드에서 사용한다.
   function renderEmployeeResult(caseId) {
     const c = findCase(caseId);
     if (!c) return renderVerdict(null);
     const out = $("#result");
-    const isAI = c.ai.source === "ai";
-    const extra = c.ai.extra;
-    const sensitive = c.type === "grievance" || (isAI && extra && extra.sensitive.review_needed);
     out.className = "verdict-panel";
     out.innerHTML = `
-      ${isAI ? "" : `
-      <div class="fallback-note" role="status">
-        <strong>지금은 AI 분석이 되지 않아 임시로 분류했습니다.</strong>
-        <span>HR 담당자가 직접 확인합니다.</span>
-      </div>`}
       <div class="verdict-top">
-        <p class="micro"><b>RESULT</b>AI 분석 결과</p>
-        <dl class="emp-grid">
-          <div><dt>추천 분류</dt><dd>${escapeHTML(c.ai.category || "분류하지 못했습니다")}</dd></div>
-          <div><dt>긴급도</dt><dd class="u-text ${URG_CLASS[c.ai.urgency] || ""}">${escapeHTML(c.ai.urgency || "판단하지 못했습니다")}</dd></div>
-        </dl>
-        <p class="emp-why">${isAI && c.ai.reason ? escapeHTML(c.ai.reason) : escapeHTML(URG_PLAIN[c.ai.urgency] || "HR 담당자가 내용을 직접 확인합니다.")}</p>
+        <p class="micro"><b>COMPLETE</b>가상 의견 등록</p>
+        <p class="idle-msg">의견이 등록되었습니다.</p>
+        <p class="reason-sub">가상 접수번호: <strong>${escapeHTML(c.id)}</strong></p>
       </div>
-      ${sensitive ? `
-      <div class="verdict-row care">
-        <p class="emp-care">민감한 내용일 수 있어요. 실제 고충은 회사의 공식 고충처리 창구를 이용해 주세요.</p>
-      </div>` : ""}
       <div class="verdict-foot">
-        <p class="reason-sub emp-practice">실습용 서비스라 실제로 접수되거나 HR 담당자에게 전달되지 않습니다. AI 결과는 참고용입니다. <span>(가상 번호 ${escapeHTML(c.id)})</span></p>
-        <details class="mini-disclosure">
-          <summary>AI에 보낸 문장 보기</summary>
-          <p class="masked-text">${highlightMasks(c.finalText)}</p>
-        </details>
-        <button type="button" class="btn-link emp-to-hr" data-case="${escapeHTML(c.id)}">HR 검토 화면에서 보기 (실습용 시뮬레이션)</button>
+        <p class="reason-sub emp-practice">실습용 시뮬레이션입니다. 실제 신고가 접수되거나 HR 담당자에게 전달되지 않습니다. 입력 내용은 저장되지 않으며 새로고침하면 초기화됩니다.</p>
       </div>`;
-    out.querySelector(".emp-to-hr").addEventListener("click", () => openHR(c.id));
   }
 
   // ---------- 작은 표시 조각 ----------
@@ -834,9 +814,9 @@
         ${grievance ? `<label class="check-line"><input type="checkbox" id="pv-confirm" ${pv.confirmed ? "checked" : ""}> AI에 보낼 문장을 확인했습니다.</label>` : ""}
         <div class="pv-actions">
           <button type="button" id="pv-cancel" class="btn-secondary">다시 쓰기</button>
-          <button type="button" id="analyze-btn" class="btn-primary" ${grievance && !pv.confirmed ? "disabled" : ""}>이 문장으로 분석하기</button>
+          <button type="button" id="analyze-btn" class="btn-primary" ${grievance && !pv.confirmed ? "disabled" : ""}>이 문장으로 의견 남기기</button>
         </div>
-        ${grievance && !pv.confirmed ? `<p class="pv-next">체크한 뒤 '이 문장으로 분석하기'를 눌러 주세요.</p>` : ""}
+        ${grievance && !pv.confirmed ? `<p class="pv-next">체크한 뒤 '이 문장으로 의견 남기기'를 눌러 주세요.</p>` : ""}
       </div>`;
     const ta = $("#final-text");
     ta.addEventListener("input", () => { pv.draft = ta.value; });
@@ -899,7 +879,7 @@
     const maskedInfo = maskInfoText(pv.counts) + (generalized ? ` · 주의 항목 ${generalized}곳 가림·일반화` : "") + (fromCard ? "" : " · 확인 단계 없이 바로 분석(탐지 없음)");
     const rule = Rules.classify(masked, criteria, keywords); // HR 화면의 비교용 + AI 실패 시 대체용
     const btns = [$("#classify-btn"), $("#analyze-btn")].filter(Boolean);
-    btns.forEach((b) => { b.disabled = true; b.dataset.label = b.textContent; b.textContent = "분석 중…"; });
+    btns.forEach((b) => { b.disabled = true; b.dataset.label = b.textContent; b.textContent = "처리 중…"; });
     renderVerdict({ loading: true });
     let ai;
     try {
