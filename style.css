@@ -528,6 +528,20 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
 .assign-box .foot-label { margin: 0; }
 .assign-state { margin: 4px 0 0; }
 
+/* 직원 화면 간소화 */
+.pv-card { margin-top: 20px; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--ink); border-radius: var(--r); }
+.pv-title { margin: 0 0 6px; font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.pv-card .pv-chips { margin-bottom: 10px; }
+.pv-card .risk-list { margin-bottom: 12px; }
+.pv-orig { margin-top: 10px; }
+.emp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
+.emp-grid dt { font-size: 12px; font-weight: 700; color: var(--muted); }
+.emp-grid dd { margin: 2px 0 0; font-size: 22px; font-weight: 900; letter-spacing: -0.03em; color: var(--ink); }
+.emp-grid dd.u-text { font-size: 22px; }
+.emp-care { margin: 0; font-size: 14px; color: var(--ink-2); }
+.emp-practice span { color: var(--faint); }
+.emp-to-hr { margin-top: 10px; }
+
 /* 대시보드 */
 .dash-metrics { grid-template-columns: repeat(4, 1fr); }
 .dash-metrics .metric:nth-child(4n + 1) { border-left: 0; }
@@ -629,4 +643,62 @@ mark.masked { background: var(--ink); color: #fff; border-radius: 3px; padding: 
   .miss { grid-template-columns: 1fr 1fr; gap: 10px 14px; }
   .miss-main { grid-column: 1 / -1; }
   .miss-cell::before { content: attr(data-label); font-size: 11px; font-weight: 700; color: var(--faint); }
+}
+
+/* ---------- 직원 화면: 부드러운 카드형 (2026-11-07) ----------
+   직원 접수 화면(#panel-classify) 안에만 적용한다. HR 검토·대시보드·채점 화면은 그대로 둔다.
+   큰 카드 18px · 입력창 14~18px · 버튼 12px · 유형 탭 11px · 안내 상자 12~14px */
+#panel-classify {
+  --card-r: 18px;
+  --soft-line: #eceef2;
+  --card-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 14px rgba(17, 24, 39, 0.03);
+}
+/* 입력 카드 */
+#panel-classify .composer { border-radius: var(--card-r); border-color: var(--line); box-shadow: var(--card-shadow); transition: border-color 0.15s, box-shadow 0.15s; }
+#panel-classify .composer:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.07); }
+#panel-classify .composer textarea { border-radius: var(--card-r) var(--card-r) 0 0; padding: 22px 24px; }
+#panel-classify .composer-bar { padding: 14px 14px 14px 22px; border-top-color: var(--soft-line); }
+/* 버튼: 같은 높이로 맞춘다 */
+#panel-classify .btn-primary, #panel-classify .btn-secondary { border-radius: 12px; min-height: 46px; padding-top: 0; padding-bottom: 0; display: inline-flex; align-items: center; justify-content: center; }
+#panel-classify .btn-primary { padding-left: 24px; padding-right: 24px; }
+#panel-classify .btn-secondary { padding-left: 22px; padding-right: 22px; border-width: 1px; border-color: var(--line-strong); }
+#panel-classify .btn-secondary:hover { border-color: var(--ink); background: var(--surface); }
+/* 유형 탭: 옅은 바탕 위의 세그먼트 */
+#panel-classify .type-toggle { border: 0; border-radius: 11px; background: var(--surface-2); padding: 3px; gap: 2px; }
+#panel-classify .type-toggle button { border-radius: 9px; padding: 8px 18px; background: transparent; }
+#panel-classify .type-toggle button + button { border-left: 0; }
+#panel-classify .type-toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+#panel-classify .type-row { margin-bottom: 14px; }
+/* 안내 상자 */
+#panel-classify .type-notice { border-radius: 14px; border-left-width: 4px; padding: 14px 18px; margin-bottom: 14px; }
+/* 확인 카드 */
+#panel-classify .pv-card { margin-top: 24px; padding: 22px 24px; border-radius: var(--card-r); border: 1px solid var(--line); box-shadow: var(--card-shadow); }
+#panel-classify .pv-card #final-text { min-height: 112px; border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px 16px; font-size: 15px; background: var(--surface); }
+#panel-classify .pv-card #final-text:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.07); }
+#panel-classify .risk-list { border-top-color: var(--soft-line); }
+#panel-classify .risk { border-bottom-color: var(--soft-line); }
+#panel-classify .risk-toggle { border-radius: 10px; }
+#panel-classify .chip { border-radius: 8px; padding: 3px 10px; }
+#panel-classify .pv-stop, #panel-classify .pv-warn { border-radius: 12px; }
+#panel-classify .pv-actions { margin-top: 16px; gap: 10px; }
+#panel-classify .check-line { margin-top: 14px; }
+/* 결과 카드 */
+#panel-classify .verdict-panel { border-radius: var(--card-r); overflow: hidden; box-shadow: var(--card-shadow); }
+#panel-classify .verdict-top { padding: 24px 26px 22px; border-bottom-color: var(--soft-line); }
+#panel-classify .verdict-row { padding: 18px 26px; }
+#panel-classify .verdict-row + .verdict-row { border-top-color: var(--soft-line); }
+#panel-classify .verdict-foot { padding: 18px 26px 20px; border-top-color: var(--soft-line); border-radius: 0; }
+#panel-classify .fallback-note { border-radius: 0; padding-left: 26px; padding-right: 26px; border-bottom-color: var(--soft-line); }
+/* 접히는 영역 */
+#panel-classify .mini-disclosure summary { display: list-item; width: fit-content; padding: 4px 10px; margin-left: -10px; border-radius: 8px; }
+#panel-classify .mini-disclosure summary:hover { background: rgba(17, 24, 39, 0.05); }
+#panel-classify .mini-disclosure[open] .masked-text { margin-top: 8px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--soft-line); border-radius: 12px; }
+
+@media (max-width: 560px) {
+  #panel-classify { --card-r: 16px; }
+  #panel-classify .composer textarea { padding: 16px 18px; }
+  #panel-classify .composer-bar { padding: 14px 16px; }
+  #panel-classify .pv-card { padding: 18px 16px; }
+  #panel-classify .verdict-top, #panel-classify .verdict-row, #panel-classify .verdict-foot, #panel-classify .fallback-note { padding-left: 18px; padding-right: 18px; }
+  #panel-classify .btn-primary, #panel-classify .btn-secondary { min-height: 48px; }
 }
